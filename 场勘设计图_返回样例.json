@@ -1,0 +1,1056 @@
+{
+    "success":  true,
+    "project_id":  "75d06702-28c1-4be2-9c8e-f96e50f73c3c",
+    "project_name":  "survey_official",
+    "project_type":  "survey_design",
+    "summary":  {
+                    "layer_count":  23,
+                    "object_count":  244
+                },
+    "review":  {
+                   "total_rules":  43,
+                   "passed_rules":  43,
+                   "failed_rules":  0,
+                   "issues":  [
+
+                              ]
+               },
+    "warnings":  [
+
+                 ],
+    "errors":  [
+
+               ],
+    "status":  "success",
+    "file_info":  {
+                      "file_name":  "survey_official.zip",
+                      "is_archive":  true,
+                      "archive_type":  "zip",
+                      "files_inside":  [
+                                           "Plan_de_récolement\\SHP JAD-MARJANE.qgz",
+                                           "Plan_de_récolement\\Shape\\BOITE.cpg",
+                                           "Plan_de_récolement\\Shape\\BOITE.dbf",
+                                           "Plan_de_récolement\\Shape\\BOITE.prj",
+                                           "Plan_de_récolement\\Shape\\BOITE.qix",
+                                           "Plan_de_récolement\\Shape\\BOITE.qmd",
+                                           "Plan_de_récolement\\Shape\\BOITE.shp",
+                                           "Plan_de_récolement\\Shape\\BOITE.shx",
+                                           "Plan_de_récolement\\Shape\\CABLE.cpg",
+                                           "Plan_de_récolement\\Shape\\CABLE.dbf",
+                                           "Plan_de_récolement\\Shape\\CABLE.prj",
+                                           "Plan_de_récolement\\Shape\\CABLE.qix",
+                                           "Plan_de_récolement\\Shape\\CABLE.qmd",
+                                           "Plan_de_récolement\\Shape\\CABLE.shp",
+                                           "Plan_de_récolement\\Shape\\CABLE.shx",
+                                           "Plan_de_récolement\\Shape\\IMB.cpg",
+                                           "Plan_de_récolement\\Shape\\IMB.dbf",
+                                           "Plan_de_récolement\\Shape\\IMB.prj",
+                                           "Plan_de_récolement\\Shape\\IMB.qmd",
+                                           "Plan_de_récolement\\Shape\\IMB.shp",
+                                           "Plan_de_récolement\\Shape\\IMB.shx",
+                                           "Plan_de_récolement\\Shape\\INFRASTRUCTURE.cpg",
+                                           "Plan_de_récolement\\Shape\\INFRASTRUCTURE.dbf",
+                                           "Plan_de_récolement\\Shape\\INFRASTRUCTURE.prj",
+                                           "Plan_de_récolement\\Shape\\INFRASTRUCTURE.qix",
+                                           "Plan_de_récolement\\Shape\\INFRASTRUCTURE.qmd",
+                                           "Plan_de_récolement\\Shape\\INFRASTRUCTURE.shp",
+                                           "Plan_de_récolement\\Shape\\INFRASTRUCTURE.shx",
+                                           "Plan_de_récolement\\Shape\\l_bpe_mode_pose.csv",
+                                           "Plan_de_récolement\\Shape\\l_cable_type.csv",
+                                           "Plan_de_récolement\\Shape\\l_fibre_type.csv",
+                                           "Plan_de_récolement\\Shape\\l_imb_bat.csv",
+                                           "Plan_de_récolement\\Shape\\l_imb_racco.csv",
+                                           "Plan_de_récolement\\Shape\\l_imb_type.csv",
+                                           "Plan_de_récolement\\Shape\\l_mode_pose.csv",
+                                           "Plan_de_récolement\\Shape\\l_ptc_nature.csv",
+                                           "Plan_de_récolement\\Shape\\l_ptc_type.csv",
+                                           "Plan_de_récolement\\Shape\\l_site_type.csv",
+                                           "Plan_de_récolement\\Shape\\l_statut.csv",
+                                           "Plan_de_récolement\\Shape\\l_type_log.csv",
+                                           "Plan_de_récolement\\Shape\\l_type_prop.csv",
+                                           "Plan_de_récolement\\Shape\\PTECH.cpg",
+                                           "Plan_de_récolement\\Shape\\PTECH.dbf",
+                                           "Plan_de_récolement\\Shape\\PTECH.prj",
+                                           "Plan_de_récolement\\Shape\\PTECH.qix",
+                                           "Plan_de_récolement\\Shape\\PTECH.qmd",
+                                           "Plan_de_récolement\\Shape\\PTECH.shp",
+                                           "Plan_de_récolement\\Shape\\PTECH.shx",
+                                           "Plan_de_récolement\\Shape\\SITE.cpg",
+                                           "Plan_de_récolement\\Shape\\SITE.dbf",
+                                           "Plan_de_récolement\\Shape\\SITE.prj",
+                                           "Plan_de_récolement\\Shape\\SITE.qix",
+                                           "Plan_de_récolement\\Shape\\SITE.qmd",
+                                           "Plan_de_récolement\\Shape\\SITE.shp",
+                                           "Plan_de_récolement\\Shape\\SITE.shx",
+                                           "Plan_de_récolement\\Shape\\Type boite.csv",
+                                           "Plan_de_récolement\\Shape\\ZNRO.cpg",
+                                           "Plan_de_récolement\\Shape\\ZNRO.dbf",
+                                           "Plan_de_récolement\\Shape\\ZNRO.prj",
+                                           "Plan_de_récolement\\Shape\\ZNRO.qix",
+                                           "Plan_de_récolement\\Shape\\ZNRO.qmd",
+                                           "Plan_de_récolement\\Shape\\ZNRO.shp",
+                                           "Plan_de_récolement\\Shape\\ZNRO.shx",
+                                           "Plan_de_récolement\\Shape\\ZPM.cpg",
+                                           "Plan_de_récolement\\Shape\\ZPM.dbf",
+                                           "Plan_de_récolement\\Shape\\ZPM.prj",
+                                           "Plan_de_récolement\\Shape\\ZPM.qix",
+                                           "Plan_de_récolement\\Shape\\ZPM.qmd",
+                                           "Plan_de_récolement\\Shape\\ZPM.shp",
+                                           "Plan_de_récolement\\Shape\\ZPM.shx",
+                                           "Plan_de_récolement\\Shape\\_IMB.cpg",
+                                           "Plan_de_récolement\\Shape\\_IMB.dbf",
+                                           "Plan_de_récolement\\Shape\\_IMB.prj",
+                                           "Plan_de_récolement\\Shape\\_IMB.shp",
+                                           "Plan_de_récolement\\Shape\\_IMB.shx"
+                                       ],
+                      "file_category":  "场勘设计图",
+                      "missing_shp_parts":  null,
+                      "can_be_parsed":  true,
+                      "warnings":  [
+
+                                   ]
+                  },
+    "layers":  [
+                   {
+                       "layer_name":  "BOITE",
+                       "name":  "BOITE",
+                       "source_layer_name":  "BOITE",
+                       "exists":  true,
+                       "geometry_type":  "none",
+                       "fields":  [
+
+                                  ],
+                       "feature_count":  0
+                   },
+                   {
+                       "layer_name":  "CABLE",
+                       "name":  "CABLE",
+                       "source_layer_name":  "CABLE",
+                       "exists":  true,
+                       "geometry_type":  "none",
+                       "fields":  [
+
+                                  ],
+                       "feature_count":  0
+                   },
+                   {
+                       "layer_name":  "IMB",
+                       "name":  "IMB",
+                       "source_layer_name":  "IMB",
+                       "exists":  true,
+                       "geometry_type":  "point",
+                       "fields":  [
+                                      [
+                                          "fid",
+                                          "float"
+                                      ],
+                                      [
+                                          "CODE",
+                                          "str"
+                                      ],
+                                      [
+                                          "REF_PLAQUE",
+                                          "str"
+                                      ],
+                                      [
+                                          "REGION",
+                                          "str"
+                                      ],
+                                      [
+                                          "PROVINCE",
+                                          "str"
+                                      ],
+                                      [
+                                          "VILLE",
+                                          "str"
+                                      ],
+                                      [
+                                          "COMMUNE",
+                                          "str"
+                                      ],
+                                      [
+                                          "QUARTIER",
+                                          "str"
+                                      ],
+                                      [
+                                          "CODE_POSTAL",
+                                          "int"
+                                      ],
+                                      [
+                                          "CODE_POSTA",
+                                          "int"
+                                      ],
+                                      [
+                                          "NUMERO_VOIE",
+                                          "int"
+                                      ],
+                                      [
+                                          "NUMERO_VOI",
+                                          "int"
+                                      ],
+                                      [
+                                          "COMPLEMENT",
+                                          "str"
+                                      ],
+                                      [
+                                          "TYPE_VOIE",
+                                          "str"
+                                      ],
+                                      [
+                                          "NOM_VOIE",
+                                          "str"
+                                      ],
+                                      [
+                                          "COMPLEMENT_VOIE",
+                                          "NoneType"
+                                      ],
+                                      [
+                                          "COMPLEME_1",
+                                          "NoneType"
+                                      ],
+                                      [
+                                          "NOM_BATIMENT",
+                                          "str"
+                                      ],
+                                      [
+                                          "NOM_BATIME",
+                                          "str"
+                                      ],
+                                      [
+                                          "TYPE_BATIMENT",
+                                          "str"
+                                      ],
+                                      [
+                                          "TYPE_BATIM",
+                                          "str"
+                                      ],
+                                      [
+                                          "TYPE_CLIENT",
+                                          "str"
+                                      ],
+                                      [
+                                          "TYPE_CLIEN",
+                                          "str"
+                                      ],
+                                      [
+                                          "NB_LOC_RES",
+                                          "int"
+                                      ],
+                                      [
+                                          "NB_LOC_PRO",
+                                          "int"
+                                      ],
+                                      [
+                                          "NB_LOC_TOT",
+                                          "int"
+                                      ],
+                                      [
+                                          "RACCORDEMENT",
+                                          "str"
+                                      ],
+                                      [
+                                          "RACCORDEME",
+                                          "str"
+                                      ],
+                                      [
+                                          "STATUT",
+                                          "str"
+                                      ],
+                                      [
+                                          "GESTION",
+                                          "str"
+                                      ],
+                                      [
+                                          "NUM_GESTIONNAIRE",
+                                          "int"
+                                      ],
+                                      [
+                                          "NUM_GESTIO",
+                                          "int"
+                                      ],
+                                      [
+                                          "NB_ETAGE",
+                                          "int"
+                                      ],
+                                      [
+                                          "COL_MONTANTE",
+                                          "str"
+                                      ],
+                                      [
+                                          "COL_MONTAN",
+                                          "str"
+                                      ],
+                                      [
+                                          "SOUS_SOL",
+                                          "str"
+                                      ],
+                                      [
+                                          "SOUS_SOL_COMMUN",
+                                          "str"
+                                      ],
+                                      [
+                                          "SOUS_SOL_C",
+                                          "str"
+                                      ],
+                                      [
+                                          "BPE_CODE",
+                                          "str"
+                                      ],
+                                      [
+                                          "X",
+                                          "float"
+                                      ],
+                                      [
+                                          "Y",
+                                          "float"
+                                      ],
+                                      [
+                                          "COMMENT",
+                                          "NoneType"
+                                      ]
+                                  ],
+                       "feature_count":  51
+                   },
+                   {
+                       "layer_name":  "INFRASTRUCTURE",
+                       "name":  "INFRASTRUCTURE",
+                       "source_layer_name":  "INFRASTRUCTURE",
+                       "exists":  true,
+                       "geometry_type":  "none",
+                       "fields":  [
+
+                                  ],
+                       "feature_count":  0
+                   },
+                   {
+                       "layer_name":  "PTECH",
+                       "name":  "PTECH",
+                       "source_layer_name":  "PTECH",
+                       "exists":  true,
+                       "geometry_type":  "none",
+                       "fields":  [
+
+                                  ],
+                       "feature_count":  0
+                   },
+                   {
+                       "layer_name":  "SITE",
+                       "name":  "SITE",
+                       "source_layer_name":  "SITE",
+                       "exists":  true,
+                       "geometry_type":  "point",
+                       "fields":  [
+                                      [
+                                          "fid",
+                                          "float"
+                                      ],
+                                      [
+                                          "CODE",
+                                          "str"
+                                      ],
+                                      [
+                                          "REF_PLAQUE",
+                                          "str"
+                                      ],
+                                      [
+                                          "REF_NRO",
+                                          "str"
+                                      ],
+                                      [
+                                          "TYPE",
+                                          "str"
+                                      ],
+                                      [
+                                          "FABRIQUANT",
+                                          "str"
+                                      ],
+                                      [
+                                          "REF_PRODUIT",
+                                          "str"
+                                      ],
+                                      [
+                                          "REF_PRODUI",
+                                          "str"
+                                      ],
+                                      [
+                                          "MODE_POSE",
+                                          "str"
+                                      ],
+                                      [
+                                          "STATUT",
+                                          "str"
+                                      ],
+                                      [
+                                          "PROPRIETAIRE",
+                                          "str"
+                                      ],
+                                      [
+                                          "PROPRIETAI",
+                                          "str"
+                                      ],
+                                      [
+                                          "GESTIONNAIRE",
+                                          "str"
+                                      ],
+                                      [
+                                          "GESTIONNAI",
+                                          "str"
+                                      ],
+                                      [
+                                          "ADRESSSE",
+                                          "str"
+                                      ],
+                                      [
+                                          "COMMUNE",
+                                          "str"
+                                      ],
+                                      [
+                                          "CODE_POSTAL",
+                                          "int"
+                                      ],
+                                      [
+                                          "CODE_POSTA",
+                                          "int"
+                                      ],
+                                      [
+                                          "X",
+                                          "float"
+                                      ],
+                                      [
+                                          "Y",
+                                          "float"
+                                      ],
+                                      [
+                                          "COMMENT",
+                                          "NoneType"
+                                      ]
+                                  ],
+                       "feature_count":  1
+                   },
+                   {
+                       "layer_name":  "ZNRO",
+                       "name":  "ZNRO",
+                       "source_layer_name":  "ZNRO",
+                       "exists":  true,
+                       "geometry_type":  "none",
+                       "fields":  [
+
+                                  ],
+                       "feature_count":  0
+                   },
+                   {
+                       "layer_name":  "ZPM",
+                       "name":  "ZPM",
+                       "source_layer_name":  "ZPM",
+                       "exists":  true,
+                       "geometry_type":  "none",
+                       "fields":  [
+
+                                  ],
+                       "feature_count":  0
+                   },
+                   {
+                       "layer_name":  "OpenStreetMap",
+                       "name":  "OpenStreetMap",
+                       "source_layer_name":  "OpenStreetMap",
+                       "exists":  true,
+                       "geometry_type":  "none",
+                       "fields":  [
+
+                                  ],
+                       "feature_count":  0
+                   },
+                   {
+                       "layer_name":  "l_bpe_mode_pose",
+                       "name":  "l_bpe_mode_pose",
+                       "source_layer_name":  "l_bpe_mode_pose",
+                       "exists":  true,
+                       "geometry_type":  "none",
+                       "fields":  [
+                                      [
+                                          "ANCRAGE FACADE;ANCRAGE FACADE",
+                                          "str"
+                                      ]
+                                  ],
+                       "feature_count":  6
+                   },
+                   {
+                       "layer_name":  "l_cable_type",
+                       "name":  "l_cable_type",
+                       "source_layer_name":  "l_cable_type",
+                       "exists":  true,
+                       "geometry_type":  "none",
+                       "fields":  [
+                                      [
+                                          "TRANSPORT;TRANSPORT",
+                                          "str"
+                                      ]
+                                  ],
+                       "feature_count":  4
+                   },
+                   {
+                       "layer_name":  "l_fibre_type",
+                       "name":  "l_fibre_type",
+                       "source_layer_name":  "l_fibre_type",
+                       "exists":  true,
+                       "geometry_type":  "none",
+                       "fields":  [
+                                      [
+                                          "G652;G652",
+                                          "str"
+                                      ]
+                                  ],
+                       "feature_count":  13
+                   },
+                   {
+                       "layer_name":  "l_imb_bat",
+                       "name":  "l_imb_bat",
+                       "source_layer_name":  "l_imb_bat",
+                       "exists":  true,
+                       "geometry_type":  "none",
+                       "fields":  [
+                                      [
+                                          "BATIMENT PUBLIC ;BATIMENT PUBLIC ",
+                                          "str"
+                                      ]
+                                  ],
+                       "feature_count":  21
+                   },
+                   {
+                       "layer_name":  "l_imb_racco",
+                       "name":  "l_imb_racco",
+                       "source_layer_name":  "l_imb_racco",
+                       "exists":  true,
+                       "geometry_type":  "none",
+                       "fields":  [
+                                      [
+                                          "SOUSTERRAIN;SOUSTERRAIN",
+                                          "str"
+                                      ]
+                                  ],
+                       "feature_count":  3
+                   },
+                   {
+                       "layer_name":  "l_imb_type",
+                       "name":  "l_imb_type",
+                       "source_layer_name":  "l_imb_type",
+                       "exists":  true,
+                       "geometry_type":  "none",
+                       "fields":  [
+                                      [
+                                          "RESIDENTIEL;RESIDENTIEL",
+                                          "str"
+                                      ]
+                                  ],
+                       "feature_count":  4
+                   },
+                   {
+                       "layer_name":  "l_mode_pose",
+                       "name":  "l_mode_pose",
+                       "source_layer_name":  "l_mode_pose",
+                       "exists":  true,
+                       "geometry_type":  "none",
+                       "fields":  [
+                                      [
+                                          "SOUTERRAIN;SOUTERRAIN",
+                                          "str"
+                                      ]
+                                  ],
+                       "feature_count":  4
+                   },
+                   {
+                       "layer_name":  "l_ptc_nature",
+                       "name":  "l_ptc_nature",
+                       "source_layer_name":  "l_ptc_nature",
+                       "exists":  true,
+                       "geometry_type":  "none",
+                       "fields":  [
+                                      [
+                                          "A1;A1",
+                                          "str"
+                                      ]
+                                  ],
+                       "feature_count":  117
+                   },
+                   {
+                       "layer_name":  "l_ptc_type",
+                       "name":  "l_ptc_type",
+                       "source_layer_name":  "l_ptc_type",
+                       "exists":  true,
+                       "geometry_type":  "none",
+                       "fields":  [
+                                      [
+                                          "APPUI;APPUI",
+                                          "str"
+                                      ]
+                                  ],
+                       "feature_count":  4
+                   },
+                   {
+                       "layer_name":  "l_site_type",
+                       "name":  "l_site_type",
+                       "source_layer_name":  "l_site_type",
+                       "exists":  true,
+                       "geometry_type":  "none",
+                       "fields":  [
+                                      [
+                                          "NRO;NRO",
+                                          "str"
+                                      ]
+                                  ],
+                       "feature_count":  5
+                   },
+                   {
+                       "layer_name":  "l_statut",
+                       "name":  "l_statut",
+                       "source_layer_name":  "l_statut",
+                       "exists":  true,
+                       "geometry_type":  "none",
+                       "fields":  [
+                                      [
+                                          "DEPLOYE;DEPLOYE",
+                                          "str"
+                                      ]
+                                  ],
+                       "feature_count":  2
+                   },
+                   {
+                       "layer_name":  "l_type_log",
+                       "name":  "l_type_log",
+                       "source_layer_name":  "l_type_log",
+                       "exists":  true,
+                       "geometry_type":  "none",
+                       "fields":  [
+                                      [
+                                          "TRANSPORT;TRANSPORT",
+                                          "str"
+                                      ]
+                                  ],
+                       "feature_count":  2
+                   },
+                   {
+                       "layer_name":  "l_type_prop",
+                       "name":  "l_type_prop",
+                       "source_layer_name":  "l_type_prop",
+                       "exists":  true,
+                       "geometry_type":  "none",
+                       "fields":  [
+                                      [
+                                          "CESSION;CESSION",
+                                          "str"
+                                      ]
+                                  ],
+                       "feature_count":  4
+                   },
+                   {
+                       "layer_name":  "Type boite",
+                       "name":  "Type boite",
+                       "source_layer_name":  "Type boite",
+                       "exists":  true,
+                       "geometry_type":  "none",
+                       "fields":  [
+                                      [
+                                          "BPE;BPE",
+                                          "str"
+                                      ]
+                                  ],
+                       "feature_count":  3
+                   }
+               ],
+    "review_results":  [
+                           {
+                               "check_object":  "文件 IMB.shp",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R001",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "文件 IMB.shx",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R001",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "文件 IMB.dbf",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R001",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "文件 IMB.prj",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R001",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "文件 SITE.shp",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R001",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "文件 SITE.shx",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R001",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "文件 SITE.dbf",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R001",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "文件 SITE.prj",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R001",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "文件 BOITE.shp",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R001",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "文件 BOITE.shx",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R001",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "文件 BOITE.dbf",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R001",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "文件 BOITE.prj",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R001",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "文件 CABLE.shp",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R001",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "文件 CABLE.shx",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R001",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "文件 CABLE.dbf",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R001",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "文件 CABLE.prj",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R001",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "文件 PTECH.shp",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R001",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "文件 PTECH.shx",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R001",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "文件 PTECH.dbf",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R001",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "文件 PTECH.prj",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R001",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "文件 INFRASTRUCTURE.shp",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R001",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "文件 INFRASTRUCTURE.shx",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R001",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "文件 INFRASTRUCTURE.dbf",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R001",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "文件 INFRASTRUCTURE.prj",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R001",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "文件 ZNRO.shp",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R001",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "文件 ZNRO.shx",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R001",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "文件 ZNRO.dbf",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R001",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "文件 ZNRO.prj",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R001",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "文件 ZPM.shp",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R001",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "文件 ZPM.shx",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R001",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "文件 ZPM.dbf",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R001",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "文件 ZPM.prj",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R001",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "图层 BOITE",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "存在",
+                               "expected_value":  "存在",
+                               "rule_id":  "R002",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "图层名称 IMB",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "IMB",
+                               "expected_value":  "IMB",
+                               "rule_id":  "R003",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "图层名称 SITE",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "SITE",
+                               "expected_value":  "SITE",
+                               "rule_id":  "R003",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "图层名称 BOITE",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "BOITE",
+                               "expected_value":  "BOITE",
+                               "rule_id":  "R003",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "图层名称 CABLE",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "CABLE",
+                               "expected_value":  "CABLE",
+                               "rule_id":  "R003",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "图层名称 PTECH",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "PTECH",
+                               "expected_value":  "PTECH",
+                               "rule_id":  "R003",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "图层名称 INFRASTRUCTURE",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "INFRASTRUCTURE",
+                               "expected_value":  "INFRASTRUCTURE",
+                               "rule_id":  "R003",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "图层名称 ZNRO",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "ZNRO",
+                               "expected_value":  "ZNRO",
+                               "rule_id":  "R003",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "图层名称 ZPM",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "ZPM",
+                               "expected_value":  "ZPM",
+                               "rule_id":  "R003",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "图层 IMB",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "point",
+                               "expected_value":  "point",
+                               "rule_id":  "R004",
+                               "error_description":  null
+                           },
+                           {
+                               "check_object":  "图层 SITE",
+                               "passed":  true,
+                               "problem_location":  null,
+                               "actual_value":  "point",
+                               "expected_value":  "point",
+                               "rule_id":  "R004",
+                               "error_description":  null
+                           }
+                       ],
+    "serious_issues_detected":  false,
+    "excel_data":  {
+
+                   },
+    "pdf_text":  {
+
+                 }
+}

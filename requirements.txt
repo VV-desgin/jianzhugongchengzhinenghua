@@ -1,0 +1,35 @@
+# ===================== 地理空间库 =====================
+# fiona（GDAL 绑定）：PyPI 上仅提供 Python 3.10 ~ 3.13 的预编译 wheel，3.14+ 无 wheel。
+# 在 3.10 ~ 3.13 上作为首选矢量读取后端；3.14+ 由 pip 自动跳过，代码回退到 pyshp。
+fiona==1.10.1; python_version >= "3.10" and python_version < "3.14"
+# pyshp：纯 Python SHP 读取库（无 GDAL 依赖），作为通用回退后端，所有 Python 版本均可安装，
+# 确保 Python 3.14+ 也能直接执行 `pip install -r requirements.txt` 并正常运行。
+pyshp==2.3.1
+shapely==2.1.2
+pyproj==3.7.1; python_version < "3.11"
+pyproj==3.7.2; python_version >= "3.11"
+
+# ===================== 数据处理 =====================
+pandas==2.3.3
+openpyxl==3.1.5
+dbfread==2.0.7
+xlrd==2.0.2
+
+# ===================== Web 框架 =====================
+fastapi==0.137.2
+uvicorn[standard]==0.49.0
+python-multipart==0.0.32
+pydantic==2.13.4
+httpx==0.28.1
+
+# ===================== 文件解析 =====================
+rarfile==4.4
+py7zr==1.1.3
+pdfplumber==0.11.10
+pyyaml==6.0.3
+
+# ===================== 测试 =====================
+pytest==9.1.1
+
+# ===================== 日志 =====================
+loguru==0.7.3
