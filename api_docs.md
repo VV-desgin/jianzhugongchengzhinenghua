@@ -37,7 +37,7 @@ python api.py
 
 说明：`name` 为标准名、`source_layer_name` 为原始名；空图层保留（exists=true, feature_count=0）；`exists=false` 表示图层不存在或配套文件不完整。
 
-#### GET /project/{id}/device/{code} — 查询设备
+#### GET /project/{id}/device/{code}?crs=EPSG:4490 — 查询设备（支持 crs 参数坐标转换，默认原始坐标系）
 
 返回设备所在图层、属性与坐标。
 

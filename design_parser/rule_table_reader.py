@@ -17,6 +17,25 @@ import re
 RULES_KEYWORDS = ("规则", "字段说明")
 VALIDATION_SHEET_NAMES = ("校验规则", "规则")
 EXCEL_EXTS = (".xlsx", ".xls")
+_FILE_CACHE: Dict[str, tuple] = {}
+
+
+def _cached_file(path: Path, key: str, builder):
+    """按（路径+键+修改时间）缓存解析结果，文件变动后自动重算。"""
+    try:
+        mtime = path.stat().st_mtime
+    except OSError:
+        mtime = 0
+    ck = (str(path), key, mtime)
+    hit = _FILE_CACHE.get(ck)
+    if hit is not None:
+        return hit
+    result = builder()
+    _FILE_CACHE[ck] = result
+    return result
+
+
+
 
 
 def find_rule_files(root: Path) -> List[Path]:
@@ -248,12 +267,14 @@ def build_executable_rules(field_specs: Dict[str, list],
 
 
 def parse_rule_library(path: Path) -> Dict[str, Any]:
-    """一键解析官方规则表：校验规则 + 字段说明 + 可执行条件。"""
-    validation = read_validation_rules(path)
-    field_specs = read_field_specs(path)
-    return {
-        "file": path.name,
-        "validation_rules": validation["rules"],
-        "field_specs": field_specs,
-        "executable_rules": build_executable_rules(field_specs, validation),
-    }
+    """一键解析官方规则表（缓存）。"""
+    def build():
+        validation = read_validation_rules(path)
+        field_specs = read_field_specs(path)
+        return {
+            "file": path.name,
+            "validation_rules": validation["rules"],
+            "field_specs": field_specs,
+            "executable_rules": build_executable_rules(field_specs, validation),
+        }
+    return _cached_file(path, "library", build)

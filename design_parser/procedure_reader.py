@@ -13,6 +13,23 @@ PROCEDURE_KEYWORDS = ("规程", "知识库")
 EXCEL_EXTS = (".xlsx", ".xls")
 COLUMNS = ["施工对象", "工序名称", "操作步骤", "使用材料", "工艺要求",
            "测试要求", "安全要求", "验收标准", "常见错误", "页码及章节来源"]
+_FILE_CACHE: Dict[str, tuple] = {}
+
+
+def _cached_file(path: Path, key: str, builder):
+    """按（路径+键+修改时间）缓存解析结果，文件变动后自动重算。"""
+    try:
+        mtime = path.stat().st_mtime
+    except OSError:
+        mtime = 0
+    ck = (str(path), key, mtime)
+    hit = _FILE_CACHE.get(ck)
+    if hit is not None:
+        return hit
+    result = builder()
+    _FILE_CACHE[ck] = result
+    return result
+
 
 
 def find_procedure_files(root: Path) -> List[Path]:
@@ -30,37 +47,37 @@ def _norm(value: Any) -> str:
 
 
 def read_procedure_kb(path: Path) -> Dict[str, Any]:
-    """解析规程知识库工作表，返回结构化条目列表。"""
-    from openpyxl import load_workbook
-    wb = load_workbook(path, read_only=True, data_only=True)
-    try:
-        ws = wb.worksheets[0]
-        rows = [list(r) for r in ws.iter_rows(values_only=True)]
-    finally:
-        wb.close()
-    if not rows:
-        return {"file": path.name, "entries": []}
-
-    header = [_norm(c) for c in rows[0]]
-    idx = {}
-    for col in COLUMNS:
+    """解析规程知识库工作表（缓存）。"""
+    def build():
+        from openpyxl import load_workbook
+        wb = load_workbook(path, read_only=True, data_only=True)
         try:
-            idx[col] = header.index(col)
-        except ValueError:
-            idx[col] = -1
+            ws = wb.worksheets[0]
+            rows = [list(r) for r in ws.iter_rows(values_only=True)]
+        finally:
+            wb.close()
+        if not rows:
+            return {"file": path.name, "entries": []}
 
-    entries = []
-    for row in rows[1:]:
-        entry = {}
+        header = [_norm(c) for c in rows[0]]
+        idx = {}
         for col in COLUMNS:
-            i = idx[col]
-            if i >= 0 and i < len(row) and _norm(row[i]):
-                entry[col] = _norm(row[i])
-        if entry:
-            entries.append(entry)
-    return {"file": path.name, "entries": entries}
+            try:
+                idx[col] = header.index(col)
+            except ValueError:
+                idx[col] = -1
 
-
+        entries = []
+        for row in rows[1:]:
+            entry = {}
+            for col in COLUMNS:
+                i = idx[col]
+                if i >= 0 and i < len(row) and _norm(row[i]):
+                    entry[col] = _norm(row[i])
+            if entry:
+                entries.append(entry)
+        return {"file": path.name, "entries": entries}
+    return _cached_file(path, "procedure", build)
 def search_procedure_kb(path: Path, keyword: str = "") -> Dict[str, Any]:
     """按关键词检索规程条目（匹配任一列内容）。"""
     data = read_procedure_kb(path)

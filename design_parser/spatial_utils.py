@@ -17,6 +17,26 @@ def point_geodesic_distance(p1: Point, p2: Point) -> float:
     _, _, dist = _geod.inv(p1.x, p1.y, p2.x, p2.y)
     return dist
 
+def reproject_coords(coords, src_crs: Optional[str], dst_crs: Optional[str]):
+    """将坐标列表从 src_crs 转换到 dst_crs（always_xy），失败返回原坐标。"""
+    if not coords or not src_crs or not dst_crs:
+        return coords
+    if str(src_crs).lower() == str(dst_crs).lower():
+        return coords
+    try:
+        from pyproj import CRS, Transformer
+        transformer = Transformer.from_crs(CRS.from_user_input(src_crs),
+                                           CRS.from_user_input(dst_crs), always_xy=True)
+        out = []
+        for c in coords:
+            x, y = c[0], c[1]
+            xx, yy = transformer.transform(x, y)
+            out.append([xx, yy] + list(c[2:]))
+        return out
+    except Exception:
+        return coords
+
+
 def point_distance_m(p1: Point, p2: Point, crs: Optional[str] = None) -> float:
     """?????????
 

@@ -18,6 +18,25 @@ BOM_KEYWORDS = ("bom", "material", "list", "物料", "编码")
 FIBER_KEYWORDS = ("fiber", "fibre", "topo", "splice", "纤芯", "接续", "分配",
                   "上游", "下游", "upstream", "downstream")
 EXCEL_EXTS = (".xlsx", ".xls")
+_FILE_CACHE: Dict[str, tuple] = {}
+
+
+def _cached_file(path: Path, key: str, builder):
+    """按（路径+键+修改时间）缓存解析结果，文件变动后自动重算。"""
+    try:
+        mtime = path.stat().st_mtime
+    except OSError:
+        mtime = 0
+    ck = (str(path), key, mtime)
+    hit = _FILE_CACHE.get(ck)
+    if hit is not None:
+        return hit
+    result = builder()
+    _FILE_CACHE[ck] = result
+    return result
+
+
+
 DEFAULT_ROW_LIMIT = 100
 
 
@@ -80,18 +99,14 @@ def list_sheet_names(path: Path) -> List[str]:
 
 
 def workbook_summary(path: Path, row_limit: int = DEFAULT_ROW_LIMIT) -> Dict[str, Any]:
-    """返回 Excel 工作簿摘要：文件名、类型、每个工作表名称/行数/前 row_limit 行。"""
-    suffix = path.suffix.lower()
-    sheets = _xlsx_sheets(path) if suffix == ".xlsx" else _xls_sheets(path)
-    for s in sheets:
-        s["rows"] = read_sheet_rows(path, sheet=s["name"], limit=row_limit)["rows"]
-    return {
-        "file": path.name,
-        "kind": classify_table(path.name),
-        "sheets": sheets,
-    }
-
-
+    """返回 Excel 工作簿摘要（缓存：按文件+修改时间）。"""
+    def build():
+        suffix = path.suffix.lower()
+        sheets = _xlsx_sheets(path) if suffix == ".xlsx" else _xls_sheets(path)
+        for s in sheets:
+            s["rows"] = read_sheet_rows(path, sheet=s["name"], limit=row_limit)["rows"]
+        return {"file": path.name, "kind": classify_table(path.name), "sheets": sheets}
+    return _cached_file(path, f"summary:{row_limit}", build)
 def read_sheet_rows(path: Path, sheet: Optional[str] = None,
                     limit: int = DEFAULT_ROW_LIMIT, filter: Optional[str] = None,
                     page: int = 1, page_size: Optional[int] = None) -> Dict[str, Any]:

@@ -144,3 +144,19 @@ def test_read_sheet_rows_filter_and_page(tmp_path):
     page2 = read_sheet_rows(xlsx, sheet="BOM", filter="PC", page=2, page_size=1)
     assert len(page2["rows"]) == 1
     assert page2["rows"][0][0] == "500003890"
+
+
+def test_workbook_summary_cache(tmp_path):
+    """解析缓存：同文件同参数命中同一对象，修改时间变化后重算。"""
+    import os
+    import time
+
+    xlsx = tmp_path / "BOM_LIST.xlsx"
+    _make_xlsx(xlsx)
+    s1 = workbook_summary(xlsx, row_limit=10)
+    s2 = workbook_summary(xlsx, row_limit=10)
+    assert s1 is s2  # 命中缓存
+    future = time.time() + 10
+    os.utime(xlsx, (future, future))
+    s3 = workbook_summary(xlsx, row_limit=10)
+    assert s3 is not s1  # mtime 变化 -> 重算

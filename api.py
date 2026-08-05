@@ -628,20 +628,25 @@ async def get_unrecognized_fields(project_id: str):
     })
 
 @app.get("/project/{project_id}/device/{code}", response_model=ApiResponse)
-async def get_device(project_id: str, code: str):
+async def get_device(project_id: str, code: str, crs: Optional[str] = None):
+    """查询设备（可用 crs 参数将坐标转换到目标坐标系，默认原始坐标系）。"""
+    from design_parser.spatial_utils import reproject_coords
     proj = get_project(project_id)
     for layer_name, features in proj.layers.items():
         for feat in features:
             if feat.properties.get('CODE') == code or feat.properties.get('code') == code:
                 geom = None if feat._geometry is None else feat.get_coordinates()
+                out_crs = crs or feat.original_crs
+                if geom is not None and crs:
+                    geom = reproject_coords(geom, feat.original_crs, crs)
                 return build_response(data={
                     "layer": layer_name,
                     "properties": feat.properties,
                     "geometry": geom,
-                    "geometry_type": feat.geometry_type.value if feat.geometry_type else None
+                    "geometry_type": feat.geometry_type.value if feat.geometry_type else None,
+                    "crs": out_crs,
                 })
     raise HTTPException(status_code=404, detail="设备未找到")
-
 @app.get("/project/{project_id}/trace/{code}", response_model=ApiResponse)
 async def get_trace(project_id: str, code: str):
     proj = get_project(project_id)
