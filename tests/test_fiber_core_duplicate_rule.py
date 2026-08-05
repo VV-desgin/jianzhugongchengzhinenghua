@@ -12,6 +12,7 @@ from openpyxl import Workbook
 
 from design_parser.project_data import ProjectData
 from design_parser.rule_engine import ALL_RULES, RULE_IDS, SEVERITY_MAP
+from design_parser.case_checks import find_fiber_core_duplicates
 
 CASE_DIR = Path(__file__).resolve().parents[1] / "tests" / "data" / "standard_cases"
 
@@ -114,3 +115,49 @@ def test_run_all_rules_includes_fiber_rule(tmp_path):
     fiber_failed = [r for r in results if r.rule_id == "R-FIBER-001" and not r.passed]
     assert len(fiber_failed) == 1
     assert any(r.rule_id == "R001" for r in results)  # 其它规则仍正常执行
+def test_sro_topo_duplicate_odf_port():
+    rows = [
+        ["SRO Port", "ODF Code", "ODF Port", "Section", "Code", "Capacité", "N°", "T", "F"],
+        ["1", "ODF01", "1", "0001", "CDI-JAD-MAR-0001", "144FO", "1", "1", "1"],
+        ["1", "ODF01", "1", "0001", "CDI-JAD-MAR-0001", "144FO", "1", "1", "1"],
+        ["1", "ODF01", "2", "0002", "CDI-JAD-MAR-0001", "144FO", "2", "1", "1"],
+    ]
+    issues = find_fiber_core_duplicates({"SRO-JAD-MAR-0001": rows})
+    assert len(issues) == 1
+    assert issues[0]["rule_id"] == "R-FIBER-001"
+    assert "ODF01/1" in issues[0]["object"]
+
+
+def test_entree_sheet_duplicate_input_fiber():
+    rows = [
+        ["Entrée", "Capacité", "N°", "T", "F", "Sortie"],
+        ["CDI-JAD-MAR-0001", "144FO", "1", "1", "1", "BPE-JAD-MAR-0001"],
+        ["CDI-JAD-MAR-0001", "144FO", "1", "1", "1", "BPE-JAD-MAR-0002"],
+    ]
+    issues = find_fiber_core_duplicates({"BPE-JAD-MAR-0001": rows})
+    assert len(issues) == 1
+    assert "CDI-JAD-MAR-0001" in issues[0]["object"]
+
+
+def _make_sro_engine_xlsx(path: Path):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "SRO-JAD-MAR-0001"
+    ws.append(["retour", "SRO-JAD-MAR-0001"])
+    ws.append(["SRO", None, None, "Type Epissure", None, "Distribution ", None, None])
+    ws.append(["SRO Port", "ODF Code", "ODF Port", None, None, "Section", "Code", "Capacité", "N°", "T", "F"])
+    ws.append(["1", "ODF01", "1", "E", None, "0001", "CDI-JAD-MAR-0001", "144FO", "1", "1", "1"])
+    ws.append(["1", "ODF01", "1", "E", None, "0001", "CDI-JAD-MAR-0001", "144FO", "1", "1", "1"])
+    ws.append(["1", "ODF01", "2", "E", None, "0002", "CDI-JAD-MAR-0001", "144FO", "2", "1", "1"])
+    wb.save(path)
+    wb.close()
+
+
+def test_sro_topo_duplicate_through_engine(tmp_path):
+    xlsx = tmp_path / "SRO-JAD-MAR-0001-TOPO_20251212.xlsx"
+    _make_sro_engine_xlsx(xlsx)
+    proj = _stub_proj(tmp_path)
+    failed = [r for r in proj.run_rule("R-FIBER-001") if not r.passed]
+    assert len(failed) == 1
+    assert failed[0].rule_id == "R-FIBER-001"
+    assert "ODF01/1" in failed[0].problem_location

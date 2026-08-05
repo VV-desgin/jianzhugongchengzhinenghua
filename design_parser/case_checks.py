@@ -53,8 +53,10 @@ def _cell(row: list, idx: int):
 def find_fiber_core_duplicates(sheets: Dict[str, List[list]]) -> List[Dict[str, Any]]:
     """R-FIBER-001：在纤芯连接与分配表中，无分路器时同一输入纤芯被重复使用。
 
-    输入 sheets 为 {工作表名: 行列表}，首行为表头；兼容任意包含
-    「所属节点/托盘编号/光分路器/IN」列的工作表（真实项目的纤芯拓扑表亦适用）。
+    输入 sheets 为 {工作表名: 行列表}，首行为表头；兼容三种结构：
+    - 「所属节点/托盘编号/光分路器/IN」案例表；
+    - SRO TOPO 的 SRO Port/ODF Code/ODF Port（同一输入端口重复使用）；
+    - 单箱页 Entrée/N°/T/F（同一输入纤芯重复使用）。
     """
     issues: List[Dict[str, Any]] = []
     for rows in sheets.values():
@@ -64,28 +66,71 @@ def find_fiber_core_duplicates(sheets: Dict[str, List[list]]) -> List[Dict[str, 
         tray_idx = _col(rows[0], "托盘编号")
         spl_idx = _col(rows[0], "光分路器")
         in_idx = _col(rows[0], "IN")
-        if min(node_idx, tray_idx, spl_idx, in_idx) < 0:
+        if min(node_idx, tray_idx, spl_idx, in_idx) >= 0:
+            splice_in = {}
+            for i, r in enumerate(rows[1:], 1):
+                spl = _cell(r, spl_idx) or ""
+                if spl and spl != "无":
+                    continue
+                node = _cell(r, node_idx) or ""
+                tray = _cell(r, tray_idx) or ""
+                core = _cell(r, in_idx) or ""
+                if not core:
+                    continue
+                key = (node, tray, core)
+                if key in splice_in:
+                    issues.append({
+                        "rule_id": "R-FIBER-001",
+                        "object": f"{node}/{tray}/{core}",
+                        "message": f"输入纤芯 {core} 在 {node}/{tray} 被重复使用"
+                                   f"（第 {splice_in[key]} 行与第 {i} 行）",
+                    })
+                else:
+                    splice_in[key] = i
             continue
-        splice_in = {}
-        for i, r in enumerate(rows[1:], 1):
-            spl = _cell(r, spl_idx) or ""
-            if spl and spl != "无":
-                continue
-            node = _cell(r, node_idx) or ""
-            tray = _cell(r, tray_idx) or ""
-            core = _cell(r, in_idx) or ""
-            if not core:
-                continue
-            key = (node, tray, core)
-            if key in splice_in:
-                issues.append({
-                    "rule_id": "R-FIBER-001",
-                    "object": f"{node}/{tray}/{core}",
-                    "message": f"输入纤芯 {core} 在 {node}/{tray} 被重复使用"
-                               f"（第 {splice_in[key]} 行与第 {i} 行）",
-                })
-            else:
-                splice_in[key] = i
+        sro_idx = _col(rows[0], "SRO Port")
+        odf_idx = _col(rows[0], "ODF Code")
+        odf_port_idx = _col(rows[0], "ODF Port")
+        if odf_idx >= 0 and odf_port_idx >= 0:
+            used_port = {}
+            for i, r in enumerate(rows[1:], 1):
+                odf = _cell(r, odf_idx)
+                port = _cell(r, odf_port_idx)
+                if not odf or not port:
+                    continue
+                sro = _cell(r, sro_idx) if sro_idx >= 0 else ""
+                key = (sro or "", odf, port)
+                if key in used_port:
+                    issues.append({
+                        "rule_id": "R-FIBER-001",
+                        "object": f"{odf}/{port}",
+                        "message": f"输入端口 {odf}/{port}（SRO {sro or '-'}）被重复使用"
+                                   f"（第 {used_port[key]} 行与第 {i} 行）",
+                    })
+                else:
+                    used_port[key] = i
+            continue
+        ent_idx = _col(rows[0], "Entrée")
+        n_idx = _col(rows[0], "N°")
+        t_idx = _col(rows[0], "T")
+        f_idx = _col(rows[0], "F")
+        if min(ent_idx, n_idx, t_idx, f_idx) >= 0:
+            used_core = {}
+            for i, r in enumerate(rows[1:], 1):
+                ent = _cell(r, ent_idx)
+                if not ent:
+                    continue
+                key = (ent, _cell(r, n_idx) or "", _cell(r, t_idx) or "", _cell(r, f_idx) or "")
+                if key in used_core:
+                    issues.append({
+                        "rule_id": "R-FIBER-001",
+                        "object": f"{ent}/{key[1]}-{key[2]}-{key[3]}",
+                        "message": f"输入纤芯 {ent} N°{key[1]} T{key[2]} F{key[3]} 被重复使用"
+                                   f"（第 {used_core[key]} 行与第 {i} 行）",
+                    })
+                else:
+                    used_core[key] = i
+            continue
     return issues
 
 

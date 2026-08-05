@@ -12,6 +12,12 @@
 | `setup.py` | 修复点1 | `python_requires=">=3.10,<3.15"` |
 | `tests/` | 四 | 0.2 要求 7 项测试 + 4 项 pyshp 回退测试（共 11 项） |
 | `DELIVERY_README.md` | 五 | 精简安装/启动/测试/验收说明 |
+| `design_parser/bom_fiber_reader.py` | 纤芯解析 | 自动识别真实表头行（兼容 SRO TOPO 多级合并表头），摘要输出 headers |
+| `design_parser/case_checks.py` | 纤芯审查 | R-FIBER-001 兼容真实 SRO TOPO（ODF 输入端口、Entrée 输入纤芯重复检查） |
+| `design_parser/rule_engine.py` | 纤芯审查 | 纤芯页签筛选增加 SRO/BPE/PBO 设备页 |
+| `design_parser/mappings/length_rules.json` | 字段长度 | CABLE_AMONT 方案1（前缀+端口不计入，编号主体最长 17 ≤ 20，真实数据 0 误报） |
+| `tests/` | 回归 | 新增 4 项纤芯/表头测试，全量 pytest 93 passed |
+| `API_SAMPLES.md` | 文档 | bom/fiber 示例同步为最新返回结构（sheets 含 headers/rows） |
 
 ## 二、关键变更说明
 
@@ -43,7 +49,7 @@
 - 新增 `engineering_data`：统一工程对象输出（{project_id, project_type, objects}，objects 包含 cable/boite/ptech/site/infrastructure，每项含唯一 id，字段覆盖 code/longueur/capacite/type/nb_fibre_util/hauteur_appui），供 BOM / 纤芯分配工作流使用；新增 `GET /project/{id}/engineering-data` 接口。
 - 新增 `POST /agent/inspect-file` 单文件识别；`/table-data` 支持 filter/page/page_size；错误响应统一为 {success:false, data:null, error:{code,message}}；`/device/{code}` 支持 crs 参数坐标转换；解析结果按文件+修改时间缓存。
 - 新增 `API_SAMPLES.md`：10 个新接口的真实返回 JSON 样例（由赛题一/赛题四数据生成）。
-- 新增 `design_parser/mappings/length_rules.json`：R032 字段长度检查可配置（CABLE_AMONT 临时口径：固定前缀与 -NNN 不计入长度，仅设备标识计 ≤20；官方确认后改配置即可，`enabled:false` 恢复全串校验）。
+- 新增 `design_parser/mappings/length_rules.json`：R032 字段长度检查可配置。CABLE_AMONT 采用方案1（已确认）：自动识别两段式前缀与末尾 -NNN（纤芯号/端口号）不计入，编号主体最长 17 位 ≤ 官方 20，两套赛题实测 0 误报；官方若改全串口径，`enabled:false` 一键恢复。
 - 新增 BOM/纤芯数据接口：`GET /project/{id}/bom-tables`、`GET /project/{id}/fiber-tables`、`GET /project/{id}/table-data`，支持解析 BOM_LIST/物料编码库/纤芯 TOPO 表格与 BOX/CABLE/SRO GPKG 层；`/agent/data-pipeline` 可传 `include_tables=true` 一并返回表格清单。
 - 新增 Excel 规则解析器：`GET /project/{id}/rule-library` 解析官方《图层表字段说明和数据校验规则.xlsx》，输出校验规则、字段说明与可执行条件（含字段类型/长度，共约 400 条）。
 - 新增上下游关系建模：`GET /project/{id}/relations` 返回 CABLE 端点→设备对象边、未解析引用、BOITE/SITE 引用字段、端点距离统计（单位米）。
@@ -53,6 +59,11 @@
 
 ### 修复点7：LLM 接口边界
 - LLM_API_URL/LLM_API_KEY/LLM_MODEL 从环境变量读取；缺少配置时 `/agent/orchestrate` 返回 502 "LLM 未配置"，不影响 `/agent/data-pipeline`、`/health` 和基础解析接口。
+
+### 修复点8：纤芯表解析与审查增强
+- 表头自动识别：`read_sheet_rows`/`workbook_summary` 自动定位真实表头行（兼容 SRO TOPO 前几行元信息 + 多级合并表头），摘要新增 `headers` 字段，下游无需再调接口猜列名。
+- R-FIBER-001 兼容真实纤芯拓扑表：SRO 页按 SRO Port/ODF Code/ODF Port 检查输入端口重复，单箱页按 Entrée/N°/T/F 检查输入纤芯重复；规则引擎自动纳入 SRO/BPE/PBO 设备页签。
+- 真实数据验证：赛题一 SRO TOPO 共 120 个设备页签被扫描，SRO 页 721 行 ODF 端口无重复，无漏扫、无误报。
 
 ### 解析进度日志（新增）
 - 终端会打印完整解析链路：收到文件 → 解压完成 → 文件分类 → 图层清单（含要素数）→ 规则审查结果 → 流水线完成，便于确认读取过程。
@@ -80,7 +91,7 @@ python api.py
 python -m pytest tests -q
 ```
 
-预期结果：42 passed（含 10 个标准测试案例的自动化验证：每个案例按预期命中规则校验）。
+预期结果：93 passed（含 10 个标准测试案例的自动化验证与纤芯表头/真实 TOPO 冲突检查用例）。
 
 ## 五、API 调用示例
 

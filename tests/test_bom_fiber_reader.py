@@ -47,6 +47,7 @@ def test_workbook_summary_and_read(tmp_path):
     bom = next(s for s in summary["sheets"] if s["name"] == "BOM")
     assert bom["row_count"] == 3
     assert bom["rows"][0][0] == "500003800"
+    assert bom["headers"] == ["物料编码", "物料名称", "单位", "数量"]
 
     data = read_sheet_rows(xlsx, sheet="BOM", limit=5)
     assert data["headers"] == ["物料编码", "物料名称", "单位", "数量"]
@@ -160,3 +161,30 @@ def test_workbook_summary_cache(tmp_path):
     os.utime(xlsx, (future, future))
     s3 = workbook_summary(xlsx, row_limit=10)
     assert s3 is not s1  # mtime 变化 -> 重算
+
+
+def _make_sro_topo_xlsx(path: Path):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "SRO-JAD-MAR-0001"
+    ws.append(["retour", "SRO-JAD-MAR-0001"])
+    ws.append(["SRO", None, None, "Type Epissure", None, "Distribution ", None, None])
+    ws.append(["SRO Port", "ODF Code", "ODF Port", None, None, "Section", "Code", "Capacité", "N°", "T", "F"])
+    ws.append(["1", "ODF01", "1", "E", None, "0001", "CDI-JAD-MAR-0001", "144FO", "1", "1", "1"])
+    ws.append(["1", "ODF01", "2", "E", None, "0002", "CDI-JAD-MAR-0001", "144FO", "2", "1", "1"])
+    wb.save(path)
+    wb.close()
+
+
+def test_sro_topo_multi_header_detection(tmp_path):
+    xlsx = tmp_path / "SRO-TOPO_20251212.xlsx"
+    _make_sro_topo_xlsx(xlsx)
+    data = read_sheet_rows(xlsx, sheet="SRO-JAD-MAR-0001", limit=10)
+    assert data["headers"][0] == "SRO Port"
+    assert data["headers"][6] == "Code"
+    assert data["rows"][0][0] == "1"
+    assert data["rows"][1][1] == "ODF01"
+    summary = workbook_summary(xlsx, row_limit=5)
+    sh = summary["sheets"][0]
+    assert sh["headers"][0] == "SRO Port"
+    assert sh["rows"][0][0] == "1"

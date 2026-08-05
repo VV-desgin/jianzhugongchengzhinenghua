@@ -3,6 +3,11 @@
 官方确认前按团队暂定口径：固定前缀（<类型>-<运营商>-）与末尾 -NNN（Increment）
 不计入长度，仅设备标识部分计（<=20）。官方确认后通过配置一键切换。
 """
+"""CABLE_AMONT 长度检查临时口径测试（length_rules.json 配置驱动）。
+
+末尾 -NNN（Increment）已确认是光缆内部纤芯号/端口号，不计入编号长度；
+固定前缀（<类型>-<运营商>-）暂不计入，仅编号主体计（<=20）。最终计法待数据方确认，可通过配置一键切换。
+"""
 
 from pathlib import Path
 from types import SimpleNamespace

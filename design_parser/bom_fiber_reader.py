@@ -38,6 +38,34 @@ def _cached_file(path: Path, key: str, builder):
 
 
 DEFAULT_ROW_LIMIT = 100
+HEADER_SCAN_ROWS = 10
+
+
+def _detect_header_index(raw_rows: List[list]) -> int:
+    """自动识别真实表头行：多级合并表头（如 SRO TOPO）前几行为元信息。
+    优先取“无数字单元格最多”的行（表头多为纯文本列名），兼容合并表头占位空格。
+    """
+    if not raw_rows:
+        return 0
+    scan = raw_rows[:HEADER_SCAN_ROWS]
+    total_counts = [
+        sum(1 for c in r if c is not None and str(c).strip() != "")
+        for r in scan
+    ]
+    first = total_counts[0]
+    mx_total = max(total_counts)
+    if first >= 5 or first == mx_total:
+        return 0
+    alpha_counts = [
+        sum(1 for c in r if c is not None and str(c).strip() and not any(ch.isdigit() for ch in str(c).strip()))
+        for r in scan
+    ]
+    mx_alpha = max(alpha_counts)
+    if mx_alpha >= 5 and mx_alpha >= first * 2:
+        return alpha_counts.index(mx_alpha)
+    if mx_total - first >= 5 and mx_total >= first * 2:
+        return total_counts.index(mx_total)
+    return 0
 
 
 def classify_table(name: str) -> str:
@@ -104,13 +132,15 @@ def workbook_summary(path: Path, row_limit: int = DEFAULT_ROW_LIMIT) -> Dict[str
         suffix = path.suffix.lower()
         sheets = _xlsx_sheets(path) if suffix == ".xlsx" else _xls_sheets(path)
         for s in sheets:
-            s["rows"] = read_sheet_rows(path, sheet=s["name"], limit=row_limit)["rows"]
+            data = read_sheet_rows(path, sheet=s["name"], limit=row_limit)
+            s["rows"] = data["rows"]
+            s["headers"] = data["headers"]
         return {"file": path.name, "kind": classify_table(path.name), "sheets": sheets}
     return _cached_file(path, f"summary:{row_limit}", build)
 def read_sheet_rows(path: Path, sheet: Optional[str] = None,
                     limit: int = DEFAULT_ROW_LIMIT, filter: Optional[str] = None,
                     page: int = 1, page_size: Optional[int] = None) -> Dict[str, Any]:
-    """读取指定工作表数据，首行作为 headers。
+    """读取指定工作表数据，自动识别真实表头（兼容多级合并表头）。
 
     支持：
     - limit/（page+page_size）分页；默认页大小为 limit（上限 1000）；
@@ -120,22 +150,17 @@ def read_sheet_rows(path: Path, sheet: Optional[str] = None,
     page = max(1, int(page))
     page_size = max(1, min(int(page_size if page_size is not None else limit), 1000))
     suffix = path.suffix.lower()
-    headers, all_rows = [], []
+    raw_rows: List[list] = []
     if suffix == ".xlsx":
         from openpyxl import load_workbook
         wb = load_workbook(path, read_only=True, data_only=True)
         try:
             ws = next((w for w in wb.worksheets if w.title == sheet), wb.worksheets[0])
             sheet_name = ws.title
-            it = ws.iter_rows(values_only=True)
-            for r_idx, row in enumerate(it):
-                vals = [_to_serializable(c) for c in row]
-                if r_idx == 0:
-                    headers = vals
-                    continue
-                all_rows.append(vals)
-                if not filter and page == 1 and len(all_rows) >= page_size:
-                    break  # 无筛选时保持早退行为
+            for row in ws.iter_rows(values_only=True):
+                raw_rows.append([_to_serializable(c) for c in row])
+                if not filter and page == 1 and len(raw_rows) >= HEADER_SCAN_ROWS + page_size:
+                    break
         finally:
             wb.close()
     else:
@@ -144,13 +169,12 @@ def read_sheet_rows(path: Path, sheet: Optional[str] = None,
         sh = next((s for s in wb.sheets() if s.name == sheet), wb.sheets()[0])
         sheet_name = sh.name
         for r_idx in range(sh.nrows):
-            vals = [_to_serializable(sh.cell_value(r_idx, c)) for c in range(sh.ncols)]
-            if r_idx == 0:
-                headers = vals
-                continue
-            all_rows.append(vals)
-            if not filter and page == 1 and len(all_rows) >= page_size:
+            raw_rows.append([_to_serializable(sh.cell_value(r_idx, c)) for c in range(sh.ncols)])
+            if not filter and page == 1 and len(raw_rows) >= HEADER_SCAN_ROWS + page_size:
                 break
+    header_idx = _detect_header_index(raw_rows)
+    headers = raw_rows[header_idx] if raw_rows else []
+    all_rows = raw_rows[header_idx + 1:]
     if filter:
         kw = filter.strip().lower()
         all_rows = [r for r in all_rows if any(kw in str(v).lower() for v in r if v is not None)]

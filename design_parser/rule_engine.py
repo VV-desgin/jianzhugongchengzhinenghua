@@ -766,8 +766,8 @@ FIBER_SHEET_ROW_LIMIT = 1000
 def _find_fiber_excel_sheets(ctx: RuleContext) -> Dict[str, Dict[str, Any]]:
     """收集项目内纤芯相关 Excel 工作表（{文件路径: {sheet: {headers, rows}}}）。
 
-    只读取工作表名含纤芯/接续/分配/topo/splice/fiber 关键词的表，单表最多
-    FIBER_SHEET_ROW_LIMIT 行，避免扫描 BOM 大表拖慢规则引擎。
+    只读取工作表名含纤芯/接续/分配/topo/splice/fiber 关键词或 SRO/BPE/PBO 页签的表，
+    单表最多 FIBER_SHEET_ROW_LIMIT 行，避免扫描 BOM 大表拖慢规则引擎。
     """
     from .bom_fiber_reader import EXCEL_EXTS, list_sheet_names, read_sheet_rows
 
@@ -794,7 +794,12 @@ def _find_fiber_excel_sheets(ctx: RuleContext) -> Dict[str, Dict[str, Any]]:
                 continue
             wanted = [
                 n for n in names
-                if n == "纤芯连接与分配" or any(k in n.lower() for k in FIBER_SHEET_KEYWORDS)
+            ]
+            wanted = [
+                n for n in names
+                if n == "纤芯连接与分配"
+                or any(k in n.lower() for k in FIBER_SHEET_KEYWORDS)
+                or re.match(r"^(SRO|BPE|PBO)[-_]", n)
             ]
             if not wanted:
                 continue

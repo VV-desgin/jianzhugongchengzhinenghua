@@ -193,7 +193,22 @@
       "sheets": [
         {
           "name": "Sheet1",
-          "row_count": 1048412
+          "row_count": 1048412,
+          "headers": [
+            "物料编码\nmaterial code",
+            "物料描述\nDescription",
+            "厂家/类型\nManufacturer/type"
+          ],
+          "rows": [
+            [
+              500003800,
+              "Pengamanan & Persiapan (Kesehatan dan Keselamatan Kerja)",
+              "FH-FH",
+              "PC",
+              1,
+              "Pengamanan & Persiapan (Kesehatan dan Keselamatan Kerja)"
+            ]
+          ]
         },
         {
           "name": "Sheet2",
@@ -223,8 +238,43 @@
 ```json
 {
   "workbooks": [
-    "SRO-JAD-MAR-0001-TOPO_20251212-180459.xlsx",
-    "SRO-JAD-MAR-0002-TOPO_20251212-180459.xlsx"
+    {
+      "file": "SRO-JAD-MAR-0001-TOPO_20251212-180459.xlsx",
+      "kind": "fiber",
+      "sheets": [
+        {
+          "name": "SRO-JAD-MAR-0001",
+          "row_count": 724,
+          "headers": [
+            "SRO Port",
+            "ODF Code",
+            "ODF Port",
+            "Section",
+            "Code",
+            "Capacité",
+            "N°",
+            "T",
+            "F",
+            "Sortie"
+          ],
+          "rows": [
+            [
+              1,
+              "ODF01",
+              1,
+              "E",
+              "0001",
+              "CDI-JAD-MAR-0001",
+              "144FO",
+              1,
+              1,
+              1,
+              "BPE-JAD-MAR-0001"
+            ]
+          ]
+        }
+      ]
+    }
   ],
   "vectors": [
     {
