@@ -328,7 +328,12 @@ async def get_layers(project_id: str):
 async def get_engineering_data(project_id: str):
     """返回统一工程对象数据（objects.cable/boite/ptech），供 BOM / 纤芯分配工作流使用。"""
     proj = get_project(project_id)
-    return build_response(data=proj.get_engineering_data())
+    data = {
+        "project_id": project_id,
+        "project_type": getattr(proj, "project_type", "unknown"),
+        "objects": proj.get_engineering_data()["objects"],
+    }
+    return build_response(data=data)
 
 @app.get("/project/{project_id}/device/{code}", response_model=ApiResponse)
 async def get_device(project_id: str, code: str):
@@ -773,7 +778,7 @@ async def data_pipeline(
         "serious_issues_detected": False,
         "excel_data": {},
         "pdf_text": {},
-        "engineering_data": {"objects": {"cable": [], "boite": [], "ptech": []}},
+        "engineering_data": {"project_id": project_id, "project_type": "unknown", "objects": {"cable": [], "boite": [], "ptech": []}},
     }
 
     proj = None
@@ -795,10 +800,15 @@ async def data_pipeline(
 
         try:
             proj = ProjectData(archive_path)
+            proj.project_type = result.get("project_type", "unknown")
             projects[project_id] = proj
             result["layers"] = proj.get_layer_info()
             logger.info(f"工程加载完成: {len(result['layers'])} 个图层")
-            result["engineering_data"] = proj.get_engineering_data()
+            result["engineering_data"] = {
+                "project_id": project_id,
+                "project_type": getattr(proj, "project_type", "unknown"),
+                "objects": proj.get_engineering_data()["objects"],
+            }
             for _f in getattr(proj, "extract_failures", []):
                 result["warnings"].append(f"解压失败: {_f}")
         except Exception as e:

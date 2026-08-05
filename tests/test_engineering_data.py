@@ -1,4 +1,15 @@
-"""engineering_data 统一工程对象输出测试（供 BOM / 纤芯分配工作流使用）。"""
+"""engineering_data 统一工程对象输出测试（供 BOM / 纤芯分配工作流使用）。
+
+对外格式与 boss 约定一致：
+{
+  "project_id": "...",
+  "project_type": "...",
+  "objects": {
+    "cable": [...], "boite": [...], "ptech": [...]
+  }
+}
+每种对象只输出其相关字段，缺失字段省略（不输出 null）。
+"""
 
 from design_parser.feature import UnifiedFeature
 from design_parser.project_data import ProjectData
@@ -24,15 +35,13 @@ def test_engineering_data_mapping_from_official_fields():
     objs = data["objects"]
     assert set(objs.keys()) == REQUIRED_OBJECT_KEYS
     assert objs["cable"][0] == {"code": "CDI-001", "longueur": 125.5, "capacite": 24,
-                                "type": "ADSS", "nb_fibre_util": 4, "hauteur_appui": None}
-    assert objs["boite"][0] == {"code": "B-01", "longueur": None, "capacite": 12,
-                                "type": "PBO", "nb_fibre_util": 2, "hauteur_appui": None}
-    assert objs["ptech"][0] == {"code": "P-01", "longueur": None, "capacite": None,
-                                "type": "appui", "nb_fibre_util": None, "hauteur_appui": 6.2}
+                                "type": "ADSS", "nb_fibre_util": 4}
+    assert objs["boite"][0] == {"code": "B-01", "capacite": 12, "type": "PBO", "nb_fibre_util": 2}
+    assert objs["ptech"][0] == {"code": "P-01", "type": "appui", "hauteur_appui": 6.2}
 
 
 def test_engineering_data_empty_layers_structure():
-    """图层缺失或为空时仍返回固定结构，字段键完整。"""
+    """图层缺失或为空时仍返回固定结构。"""
     proj = ProjectData.__new__(ProjectData)
     proj.layers = {}
     data = proj.get_engineering_data()
@@ -46,25 +55,31 @@ def test_engineering_data_empty_layers_structure():
 
 
 def test_engineering_data_in_pipeline(client, upload_survey):
-    """/agent/data-pipeline 响应包含 engineering_data 固定结构。"""
+    """/agent/data-pipeline 响应包含 engineering_data（boss 格式：project_id/project_type/objects）。"""
     resp = upload_survey()
     assert resp.status_code == 200
     data = resp.json()
     ed = data["engineering_data"]
-    assert set(ed.keys()) == {"objects"}
+    assert set(ed.keys()) == {"project_id", "project_type", "objects"}
+    assert ed["project_id"] == data["project_id"]
+    assert ed["project_type"] == data["project_type"]
     assert set(ed["objects"].keys()) == REQUIRED_OBJECT_KEYS
     for arr in ed["objects"].values():
         assert isinstance(arr, list)
         for item in arr:
-            assert set(item.keys()) == REQUIRED_FIELD_KEYS
+            assert "code" in item
+            assert set(item.keys()) <= REQUIRED_FIELD_KEYS
 
 
 def test_engineering_data_endpoint(client, upload_survey):
-    """GET /project/{id}/engineering-data 返回同一结构。"""
+    """GET /project/{id}/engineering-data 返回同一 boss 格式。"""
     resp = upload_survey()
     pid = resp.json()["project_id"]
     r2 = client.get(f"/project/{pid}/engineering-data")
     assert r2.status_code == 200
     body = r2.json()
     assert body["success"] is True
-    assert set(body["data"]["objects"].keys()) == REQUIRED_OBJECT_KEYS
+    data = body["data"]
+    assert set(data.keys()) == {"project_id", "project_type", "objects"}
+    assert data["project_id"] == pid
+    assert set(data["objects"].keys()) == REQUIRED_OBJECT_KEYS

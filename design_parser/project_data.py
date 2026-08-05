@@ -779,7 +779,9 @@ class ProjectData:
                         if v is not None and str(v).strip() != "":
                             value = v
                             break
-                    if out_field in ("longueur", "capacite", "nb_fibre_util", "hauteur_appui") and value is not None:
+                    if value is None:
+                        continue  # ????/????????? JSON ????
+                    if out_field in ("longueur", "capacite", "nb_fibre_util", "hauteur_appui"):
                         try:
                             num = float(value)
                             value = int(num) if num.is_integer() else num

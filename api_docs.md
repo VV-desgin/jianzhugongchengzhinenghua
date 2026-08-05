@@ -63,13 +63,13 @@ python api.py
 - `GET /project/{id}/stats/devices` — 设备统计（仅 point 图层）
 - `GET /project/{id}/excel?filename=xxx` — Excel 数据
 - `GET /project/{id}/pdf?filename=xxx` — PDF 文本
-- `GET /project/{id}/engineering-data` — 统一工程对象数据（objects.cable/boite/ptech，字段 code/longueur/capacite/type/nb_fibre_util/hauteur_appui），供 BOM / 纤芯分配工作流使用
+- `GET /project/{id}/engineering-data` — 统一工程对象数据，返回 {project_id, project_type, objects} ，objects 包含 cable/boite/ptech（字段覆盖 code/longueur/capacite/type/nb_fibre_util/hauteur_appui），供 BOM / 纤芯分配工作流使用
 
 ### Agent 接口（支持文件上传或 file_url）
 
 #### POST /agent/data-pipeline — 纯数据流水线（Dify 主接口）
 
-上传工程包后返回固定结构 JSON：`success`、`project_id`、`project_name`、`project_type`、`layers`、`summary`、`review`、`warnings`、`errors`、`status`，并保留 `file_info`、`review_results`、`serious_issues_detected`、`excel_data`、`pdf_text` 旧字段；新增 `engineering_data`（objects.cable/boite/ptech）统一工程对象输出。
+上传工程包后返回固定结构 JSON：`success`、`project_id`、`project_name`、`project_type`、`layers`、`summary`、`review`、`warnings`、`errors`、`status`，并保留 `file_info`、`review_results`、`serious_issues_detected`、`excel_data`、`pdf_text` 旧字段；新增 `engineering_data`（{project_id, project_type, objects} ，objects 包含 cable/boite/ptech）统一工程对象输出。
 
 - `success=true` 表示流水线执行成功，不代表工程无问题。
 - `review.issues[]` 每项固定包含 `rule_id`、`object_type`、`object_id`、`field`、`severity`、`message`、`source`。

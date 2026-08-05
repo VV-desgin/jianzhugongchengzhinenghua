@@ -52,13 +52,17 @@ curl -X POST http://127.0.0.1:8000/agent/data-pipeline \
   "serious_issues_detected": false,
   "excel_data": {},
   "pdf_text": {},
-  "engineering_data": {"objects": {"cable": [], "boite": [], "ptech": []}}
+  "engineering_data": {
+    "project_id": "uuid",
+    "project_type": "survey_design",
+    "objects": {"cable": [], "boite": [], "ptech": []}
+  }
 }
 ```
 
 说明：
 - `success=true` 仅表示流水线执行成功，不代表工程无问题；业务问题在 `review.issues` 中。
-- `engineering_data.objects` 为统一工程对象输出（cable/boite/ptech），供 BOM / 纤芯分配工作流使用；每项固定字段 code/longueur/capacite/type/nb_fibre_util/hauteur_appui，缺失为 null。
+- `engineering_data` 为统一工程对象输出（格式：project_id/project_type/objects，objects 包含 cable/boite/ptech），供 BOM / 纤芯分配工作流使用；字段覆盖 code/longueur/capacite/type/nb_fibre_util/hauteur_appui，每种对象只输出相关字段，缺失字段省略。
 - `layers[].exists=true 且 feature_count=0` 表示图层存在但为空；`exists=false` 表示图层不存在或配套文件不完整。
 - `review.issues[]` 每项固定包含 `rule_id`、`object_type`、`object_id`、`field`、`severity`、`message`、`source`。
 - 异常时返回结构化 `errors`，不会输出 Traceback。
