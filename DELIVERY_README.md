@@ -43,6 +43,7 @@
 - 新增 `engineering_data`：统一工程对象输出（{project_id, project_type, objects}，objects 包含 cable/boite/ptech/site/infrastructure，每项含唯一 id，字段覆盖 code/longueur/capacite/type/nb_fibre_util/hauteur_appui），供 BOM / 纤芯分配工作流使用；新增 `GET /project/{id}/engineering-data` 接口。
 - 新增 `POST /agent/inspect-file` 单文件识别；`/table-data` 支持 filter/page/page_size；错误响应统一为 {success:false, data:null, error:{code,message}}；`/device/{code}` 支持 crs 参数坐标转换；解析结果按文件+修改时间缓存。
 - 新增 `API_SAMPLES.md`：10 个新接口的真实返回 JSON 样例（由赛题一/赛题四数据生成）。
+- 新增 `design_parser/mappings/length_rules.json`：R032 字段长度检查可配置（CABLE_AMONT 临时口径：固定前缀与 -NNN 不计入长度，仅设备标识计 ≤20；官方确认后改配置即可，`enabled:false` 恢复全串校验）。
 - 新增 BOM/纤芯数据接口：`GET /project/{id}/bom-tables`、`GET /project/{id}/fiber-tables`、`GET /project/{id}/table-data`，支持解析 BOM_LIST/物料编码库/纤芯 TOPO 表格与 BOX/CABLE/SRO GPKG 层；`/agent/data-pipeline` 可传 `include_tables=true` 一并返回表格清单。
 - 新增 Excel 规则解析器：`GET /project/{id}/rule-library` 解析官方《图层表字段说明和数据校验规则.xlsx》，输出校验规则、字段说明与可执行条件（含字段类型/长度，共约 400 条）。
 - 新增上下游关系建模：`GET /project/{id}/relations` 返回 CABLE 端点→设备对象边、未解析引用、BOITE/SITE 引用字段、端点距离统计（单位米）。

@@ -1,6 +1,7 @@
 from typing import List, Optional, Dict, Any
 from collections import defaultdict
 import re
+import json
 import yaml
 from pathlib import Path
 
@@ -1852,6 +1853,56 @@ def check_field_domain(ctx: RuleContext) -> List[CheckResult]:
     return results
 
 
+_LENGTH_RULES_CACHE = None
+
+
+def _load_length_rules():
+    """加载长度检查配置（length_rules.json）。"""
+    global _LENGTH_RULES_CACHE
+    if _LENGTH_RULES_CACHE is None:
+        p = Path(__file__).parent / "mappings" / "length_rules.json"
+        try:
+            _LENGTH_RULES_CACHE = json.loads(p.read_text(encoding="utf-8"))
+        except Exception:
+            _LENGTH_RULES_CACHE = {"enabled": False, "rules": {}}
+    return _LENGTH_RULES_CACHE
+
+
+_PREFIX_RE = re.compile(r"^[A-Z]{2,4}-[A-Z]{2,6}-")
+_PORT_RE = re.compile(r"-\d{3}$")
+
+
+def _effective_length_text(field, value):
+    """按配置计算有效长度文本。
+
+    支持：
+    - prefix_mode="auto" ：自动剥除固定前缀（如 CDI-UNF- / CTR-INWI-）；
+    - strip_increment=true ：剥除末尾 -NNN（Increment/端口号）。
+    仅对配置中的字段生效，其他字段保持全串。
+    """
+    cfg = _load_length_rules()
+    text = _field_value_for_length(value)
+    if not cfg.get("enabled"):
+        return text
+    rules = cfg.get("rules", {})
+    rule = {}
+    for _k, _v in rules.items():
+        if field.upper() == _k.upper() or field[:10].upper() == _k[:10].upper():
+            rule = _v
+            break
+    if not rule:
+        return text
+    if rule.get("prefix_mode") == "auto":
+        m = _PREFIX_RE.match(text)
+        if m:
+            text = text[len(m.group(0)):]
+    if rule.get("strip_increment"):
+        m = _PORT_RE.search(text)
+        if m:
+            text = text[:m.start()]
+    return text
+
+
 def check_field_length(ctx: RuleContext) -> List[CheckResult]:
     """R032: 字段长度检查 = YAML 配置最大长度 + 官方字段说明 Longueur champ。"""
     results = []
@@ -1879,7 +1930,7 @@ def check_field_length(ctx: RuleContext) -> List[CheckResult]:
                     value = feat.properties.get(field)
                     if _is_missing_sentinel(value):
                         continue
-                    text = _field_value_for_length(value)
+                    text = _effective_length_text(field, value)
                     if len(text) > max_len:
                         results.append(CheckResult(
                             check_object=f"{layer_name} 要素 {feat.properties.get('CODE', feat.feature_id)}",
@@ -1912,7 +1963,7 @@ def check_field_length(ctx: RuleContext) -> List[CheckResult]:
                         continue
                     if (layer_name, feat.feature_id, field.upper()) in flagged:
                         continue
-                    text = _field_value_for_length(value)
+                    text = _effective_length_text(field, value)
                     if len(text) > max_len:
                         results.append(CheckResult(
                             check_object=f"{layer_name} 要素 {props.get('CODE', feat.feature_id)}",
