@@ -72,7 +72,8 @@ curl -X POST http://127.0.0.1:8000/agent/data-pipeline \
 
 - `GET /project/{id}/bom-tables` — BOM 物料表清单（BOM_LIST.xlsx / material_code.xls 等）。
 - `GET /project/{id}/fiber-tables` — 纤芯数据清单（SRO-TOPO 纤芯表 + BOX/CABLE/SRO GPKG 矢量层）。
-- `GET /project/{id}/table-data?file=...&sheet=...&limit=100` — 读取指定表格/层数据。
+- `GET /project/{id}/table-data?file=...&sheet=...&limit=100&filter=...&page=...&page_size=...` — 读取指定表格/层数据（支持筛选分页）。
+- `POST /agent/inspect-file` — 单文件识别（Excel/PDF/CSV/SHP/DBF/压缩包），不建项目。
 - `GET /project/{id}/rule-library` — 官方规则库解析
 - `GET /project/{id}/gis-check?tolerance=0.5` — GIS 空间审查（范围重叠/包含/自环/端点重合）
 - `GET /project/{id}/safety-check` — 安全距离审查（离地高度/电力线交越净距/管线平行交叉净距，阈值来自施工安全材料）

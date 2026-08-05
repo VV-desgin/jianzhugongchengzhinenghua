@@ -14,7 +14,7 @@
 from design_parser.feature import UnifiedFeature
 from design_parser.project_data import ProjectData
 
-REQUIRED_OBJECT_KEYS = {"cable", "boite", "ptech"}
+REQUIRED_OBJECT_KEYS = {"cable", "boite", "ptech", "site", "infrastructure"}
 REQUIRED_FIELD_KEYS = {"code", "longueur", "capacite", "type", "nb_fibre_util", "hauteur_appui"}
 
 
@@ -34,10 +34,10 @@ def test_engineering_data_mapping_from_official_fields():
     data = proj.get_engineering_data()
     objs = data["objects"]
     assert set(objs.keys()) == REQUIRED_OBJECT_KEYS
-    assert objs["cable"][0] == {"code": "CDI-001", "longueur": 125.5, "capacite": 24,
+    assert objs["cable"][0] == {"code": "CDI-001", "id": "cable:CDI-001", "longueur": 125.5, "capacite": 24,
                                 "type": "ADSS", "nb_fibre_util": 4}
-    assert objs["boite"][0] == {"code": "B-01", "capacite": 12, "type": "PBO", "nb_fibre_util": 2}
-    assert objs["ptech"][0] == {"code": "P-01", "type": "appui", "hauteur_appui": 6.2}
+    assert objs["boite"][0] == {"code": "B-01", "id": "boite:B-01", "capacite": 12, "type": "PBO", "nb_fibre_util": 2}
+    assert objs["ptech"][0] == {"code": "P-01", "id": "ptech:P-01", "type": "appui", "hauteur_appui": 6.2}
 
 
 def test_engineering_data_empty_layers_structure():
@@ -67,8 +67,8 @@ def test_engineering_data_in_pipeline(client, upload_survey):
     for arr in ed["objects"].values():
         assert isinstance(arr, list)
         for item in arr:
-            assert "code" in item
-            assert set(item.keys()) <= REQUIRED_FIELD_KEYS
+            assert "code" in item and "id" in item
+            assert set(item.keys()) <= (REQUIRED_FIELD_KEYS | {"id"})
 
 
 def test_engineering_data_endpoint(client, upload_survey):

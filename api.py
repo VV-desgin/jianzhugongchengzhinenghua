@@ -98,6 +98,26 @@ logger.remove()
 logger.add(sys.stderr, level="INFO", format="{time:HH:mm:ss} | {level: <7} | {message}")
 logger.add("api.log", rotation="10 MB", level="DEBUG", format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <7} | {name}:{function}:{line} | {message}")
 
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request, exc: HTTPException):
+    """?????????{success:false, data:null, error:{code,message}}?"""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=build_response(success=False, data=None,
+                               error={"code": exc.status_code, "message": str(exc.detail)}),
+    )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request, exc: Exception):
+    """???????????? Traceback?"""
+    logger.exception(f"?????: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content=build_response(success=False, data=None,
+                               error={"code": 500, "message": "服务器内部错误"}),
+    )
+
 @app.get("/health")
 async def health():
     return {"status": "ok"}
@@ -426,6 +446,23 @@ def suggest_unrecognized_field_mappings(proj: ProjectData) -> List[Dict]:
 
     return results
 
+
+@app.post("/agent/inspect-file", response_model=ApiResponse)
+async def inspect_single_file(file: UploadFile = File(...)):
+    """单文件识别（Excel/PDF/CSV/SHP/DBF/压缩包等）：返回类别与解析建议，不入库。"""
+    original_filename = file.filename or "unknown"
+    content = await file.read()
+    suffix = Path(original_filename).suffix
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+    try:
+        tmp.write(content)
+        tmp.close()
+        info = inspect_file(tmp.name, original_filename)
+        return build_response(data=info)
+    finally:
+        Path(tmp.name).unlink(missing_ok=True)
+
+
 @app.post("/project/load", response_model=ApiResponse)
 async def load_project(file: UploadFile = File(...)):
     suffix = Path(file.filename).suffix
@@ -501,7 +538,9 @@ async def get_fiber_tables(project_id: str):
 
 
 @app.get("/project/{project_id}/table-data", response_model=ApiResponse)
-async def get_table_data(project_id: str, file: str, sheet: Optional[str] = None, limit: int = 100):
+async def get_table_data(project_id: str, file: str, sheet: Optional[str] = None,
+                         limit: int = 100, filter: Optional[str] = None,
+                         page: int = 1, page_size: Optional[int] = None):
     """读取指定表格数据：file 为文件名，sheet 可省；GPKG 按层读取。"""
     proj = get_project(project_id)
     p = _find_table_file(_project_roots(proj), file)
@@ -510,7 +549,7 @@ async def get_table_data(project_id: str, file: str, sheet: Optional[str] = None
     limit = max(1, min(limit, 1000))
     if p.suffix.lower() == ".gpkg":
         return build_response(data=read_gpkg_rows(p, limit=limit))
-    return build_response(data=read_sheet_rows(p, sheet=sheet, limit=limit))
+    return build_response(data=read_sheet_rows(p, sheet=sheet, limit=limit, filter=filter, page=page, page_size=page_size))
 
 
 
@@ -1032,7 +1071,7 @@ async def data_pipeline(
         "serious_issues_detected": False,
         "excel_data": {},
         "pdf_text": {},
-        "engineering_data": {"project_id": project_id, "project_type": "unknown", "objects": {"cable": [], "boite": [], "ptech": []}},
+        "engineering_data": {"project_id": project_id, "project_type": "unknown", "objects": {"cable": [], "boite": [], "ptech": [], "site": [], "infrastructure": []}},
         "bom_tables": {"files": []},
         "fiber_tables": {"workbooks": [], "vectors": []},
     }

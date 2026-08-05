@@ -7,7 +7,7 @@ from typing import List, Optional
 class ApiResponse(BaseModel):
     success: bool
     data: Optional[Any] = None
-    error: Optional[str] = None
+    error: Optional[Any] = None  # 字符串或结构化 {code, message}
 
 class LayerInfo(BaseModel):
     layer_name: str

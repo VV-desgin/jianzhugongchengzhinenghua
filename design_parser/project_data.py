@@ -54,6 +54,22 @@ ENGINEERING_OBJECTS = {
         "nb_fibre_util": ["NB_FIBRE_U", "NB_FIBRE_UTIL"],
         "hauteur_appui": ["HAUTEUR_AP", "HAUTEUR_APPUI"],
     },
+    "site": {
+        "code": ["CODE", "SITE_CODE"],
+        "longueur": [],
+        "capacite": ["CAPACITE", "CAPACITY", "NB_PRISES"],
+        "type": ["TYPE"],
+        "nb_fibre_util": ["NB_FIBRE_U", "NB_FIBRE_UTIL"],
+        "hauteur_appui": [],
+    },
+    "infrastructure": {
+        "code": ["CODE", "INFRA_CODE"],
+        "longueur": ["LONGUEUR", "LGR_REELLE", "LGR_CARTO"],
+        "capacite": ["CAPACITE", "CAPACITY"],
+        "type": ["TYPE", "TYPE_LOG"],
+        "nb_fibre_util": ["NB_FIBRE_U", "NB_FIBRE_UTIL"],
+        "hauteur_appui": [],
+    },
 }
 
 
@@ -766,7 +782,7 @@ class ProjectData:
         ???? code?longueur?capacite?type?nb_fibre_util?hauteur_appui?
         ????????????? None???????????
         """
-        result = {"objects": {"cable": [], "boite": [], "ptech": []}}
+        result = {"objects": {"cable": [], "boite": [], "ptech": [], "site": [], "infrastructure": []}}
         for obj_key, field_map in ENGINEERING_OBJECTS.items():
             layer_key = self._find_engineering_layer(obj_key.upper())
             if layer_key is None:
@@ -790,6 +806,7 @@ class ProjectData:
                         except (TypeError, ValueError):
                             pass
                     item[out_field] = value
+                item["id"] = f"{obj_key}:{item.get('code', '')}"
                 result["objects"][obj_key].append(item)
         return result
 

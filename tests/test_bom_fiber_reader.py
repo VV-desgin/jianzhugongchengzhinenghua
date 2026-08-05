@@ -123,3 +123,24 @@ def test_pipeline_include_tables_structure(client, survey_zip_path):
     data = resp.json()
     assert data["bom_tables"] == {"files": []}
     assert data["fiber_tables"] == {"workbooks": [], "vectors": []}
+
+
+def test_read_sheet_rows_filter_and_page(tmp_path):
+    xlsx = tmp_path / "BOM_LIST.xlsx"
+    _make_xlsx(xlsx)
+    # 追加几行便于筛选/分页
+    from openpyxl import load_workbook
+    wb = load_workbook(xlsx)
+    ws = wb["BOM"]
+    ws.append(["MAT-002", "Transportasi", 2])
+    ws.append(["MAT-003", "Kabel", 3])
+    wb.save(xlsx); wb.close()
+
+    filtered = read_sheet_rows(xlsx, sheet="BOM", filter="PC", page=1, page_size=1)
+    assert filtered["total"] == 2  # 两行含 PC
+    assert len(filtered["rows"]) == 1
+    assert filtered["rows"][0][0] == "500003800"
+
+    page2 = read_sheet_rows(xlsx, sheet="BOM", filter="PC", page=2, page_size=1)
+    assert len(page2["rows"]) == 1
+    assert page2["rows"][0][0] == "500003890"

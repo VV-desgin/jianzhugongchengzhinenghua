@@ -66,7 +66,8 @@ python api.py
 - `GET /project/{id}/engineering-data` — 统一工程对象数据
 - `GET /project/{id}/bom-tables` — BOM 物料表清单（Excel，含前 50 行样例）
 - `GET /project/{id}/fiber-tables` — 纤芯数据清单（SRO-TOPO 纤芯表 + BOX/CABLE/SRO GPKG 矢量层）
-- `GET /project/{id}/table-data?file=xxx&sheet=yyy&limit=100` — 读取指定表格/层的数据（首行为表头）
+- `GET /project/{id}/table-data?file=xxx&sheet=yyy&limit=100&filter=关键词&page=1&page_size=100` — 读取指定表格/层的数据（首行为表头；支持筛选与分页，返回 total/page/page_size）
+- `POST /agent/inspect-file` — 单文件识别（Excel/PDF/CSV/SHP/DBF/压缩包），返回分类与解析建议，不建项目
 - `GET /project/{id}/rule-library` — 解析官方规则库
 - `GET /project/{id}/gis-check?tolerance=0.5` — GIS 空间检查（R-GIS-001~006：范围重叠/包含/自环/端点重合，端点容差默认 0.5 米）
 - `GET /project/{id}/safety-check` — 安全距离检查（R-SAFE-001~009：离地高度 4.5m/7m、电力线交越垂直净距 2/4/3/5m、管线平行/交叉净距；二维数据无 Z 时跳过并返回说明）

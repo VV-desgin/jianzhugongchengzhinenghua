@@ -93,11 +93,19 @@ def workbook_summary(path: Path, row_limit: int = DEFAULT_ROW_LIMIT) -> Dict[str
 
 
 def read_sheet_rows(path: Path, sheet: Optional[str] = None,
-                    limit: int = DEFAULT_ROW_LIMIT) -> Dict[str, Any]:
-    """读取指定工作表前 limit 行，首行作为 headers。sheet 为空时取第一个工作表。"""
-    limit = max(1, min(int(limit), 1000))
+                    limit: int = DEFAULT_ROW_LIMIT, filter: Optional[str] = None,
+                    page: int = 1, page_size: Optional[int] = None) -> Dict[str, Any]:
+    """读取指定工作表数据，首行作为 headers。
+
+    支持：
+    - limit/（page+page_size）分页；默认页大小为 limit（上限 1000）；
+    - filter：字段值包含关键字（忽畧大小写）。
+    注意：使用 filter 时会全表扫描（大表可能较慢）。
+    """
+    page = max(1, int(page))
+    page_size = max(1, min(int(page_size if page_size is not None else limit), 1000))
     suffix = path.suffix.lower()
-    headers, rows = [], []
+    headers, all_rows = [], []
     if suffix == ".xlsx":
         from openpyxl import load_workbook
         wb = load_workbook(path, read_only=True, data_only=True)
@@ -106,12 +114,13 @@ def read_sheet_rows(path: Path, sheet: Optional[str] = None,
             sheet_name = ws.title
             it = ws.iter_rows(values_only=True)
             for r_idx, row in enumerate(it):
+                vals = [_to_serializable(c) for c in row]
                 if r_idx == 0:
-                    headers = [_to_serializable(c) for c in row]
+                    headers = vals
                     continue
-                if r_idx - 1 >= limit:
-                    break
-                rows.append([_to_serializable(c) for c in row])
+                all_rows.append(vals)
+                if not filter and page == 1 and len(all_rows) >= page_size:
+                    break  # 无筛选时保持早退行为
         finally:
             wb.close()
     else:
@@ -119,15 +128,23 @@ def read_sheet_rows(path: Path, sheet: Optional[str] = None,
         wb = xlrd.open_workbook(str(path))
         sh = next((s for s in wb.sheets() if s.name == sheet), wb.sheets()[0])
         sheet_name = sh.name
-        for r_idx in range(min(sh.nrows, limit + 1)):
-            row = [_to_serializable(sh.cell_value(r_idx, c)) for c in range(sh.ncols)]
+        for r_idx in range(sh.nrows):
+            vals = [_to_serializable(sh.cell_value(r_idx, c)) for c in range(sh.ncols)]
             if r_idx == 0:
-                headers = row
-            else:
-                rows.append(row)
+                headers = vals
+                continue
+            all_rows.append(vals)
+            if not filter and page == 1 and len(all_rows) >= page_size:
+                break
+    if filter:
+        kw = filter.strip().lower()
+        all_rows = [r for r in all_rows if any(kw in str(v).lower() for v in r if v is not None)]
+    total = len(all_rows)
+    start_idx = (page - 1) * page_size
+    rows = all_rows[start_idx:start_idx + page_size]
     return {"file": path.name, "kind": classify_table(path.name),
-            "sheet": sheet_name, "headers": headers, "rows": rows}
-
+            "sheet": sheet_name, "headers": headers, "rows": rows,
+            "total": total, "page": page, "page_size": page_size}
 
 def gpkg_summary(path: Path) -> Dict[str, Any]:
     """返回 GPKG 矢量图层摘要：图层名、要素数、字段清单、前 DEFAULT_ROW_LIMIT 行。"""
