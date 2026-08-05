@@ -1,11 +1,33 @@
 # design_parser V0.3 — Dify 接入前交付说明
 
-## 一、本轮修改文件清单
 ## 〇、V0.3 版本说明
 
-- 本版本在 V0.2 稳定化基础上完成：纤芯表真实表头自动识别（摘要带 headers）、R-FIBER-001 兼容真实 SRO TOPO（ODF 输入端口 / Entrée 输入纤芯查重）、CABLE_AMONT 长度口径方案 1 定稿（前缀 + 端口不计入，编号主体最长 17 ≤ 20，真实数据 0 误报）、文档与测试用例去除人名。
+- 本版本在 V0.2 稳定化基础上完成：
+  ① 按 Boss 要求补齐统一 engineering_data 输出（objects.cable/boite/ptech，字段覆盖 code/longueur/capacite/type/nb_fibre_util/hauteur_appui，新增 GET /project/{id}/engineering-data，/agent/data-pipeline 同步返回）；
+  ② 纤芯表真实表头自动识别（摘要带 headers，兼容 SRO TOPO 多级合并表头）；
+  ③ R-FIBER-001 兼容真实 SRO TOPO（ODF 输入端口 / Entrée 输入纤芯查重）；
+  ④ CABLE_AMONT 长度口径方案 1 定稿（前缀 + 端口不计入，编号主体最长 17 ≤ 20，真实数据 0 误报）。
 - V0.2 交付包保留（design_parser_v0.2_delivery.zip），本包为 V0.3（design_parser_v0.3_delivery.zip）。
 
+## 项目总结与 Dify 对接要点（V0.3）
+
+**定位**：本系统是 Dify 全流程中的“数据解析与智能审查工具层”（接入前确定性工具），不承担 LLM 编排；总控 / BOM / 纤芯分配 / 施工生成 Agent 通过 HTTP 调用本服务取数。
+
+**核心能力**
+- 四大解析器：工程图（SHP/DBF/QGS/QGZ/CSV/JSON，fiona+pyshp 双后端）、BOM/纤芯表（Excel/GPKG，SRO TOPO 多级表头自动识别）、官方规则库（Excel，约 400 条可执行条件）、施工规程知识库（Excel）。
+- 统一数据契约：engineering_data（objects.cable/boite/ptech/site/infrastructure，字段 code/longueur/capacite/type/nb_fibre_util/hauteur_appui + 唯一 id）、bom-tables/fiber-tables/table-data、relations、rule-library。
+- 审查规则：R001~R023 + R-FIBER-001（含真实 SRO TOPO）+ R-GIS-001~006（端点容差 0.5m）+ R-SAFE-001~009（安全距离）+ 官方规则库。
+- 确定性：解析结果按文件+修改时间缓存，坐标可重投影，错误响应统一，结果可复现。
+
+**对接流程**
+1. Dify 节点调用 POST /agent/data-pipeline 上传工程包（multipart file），拿到 project_id 与 engineering_data；
+2. 后续 BOM/纤芯/施工节点通过 GET /project/{id}/... 系列接口按 project_id 取数，避免重复解析；
+3. 智能审查节点读取 review.issues（rule_id/object_id/severity/message），或单独调用 rule-library/gis-check/safety-check；
+4. 超时建议：data-pipeline 120 秒以上；服务重启后内存中的解析结果失效，需重新上传。
+
+**配套文档**：api_docs.md（接口说明）、API_SAMPLES.md（真实返回样例）、DIFY_INTEGRATION.md（Dify 对接细节）。
+
+## 一、本轮修改文件清单
 
 | 文件 | 修复点 | 关键变更 |
 |------|--------|----------|
