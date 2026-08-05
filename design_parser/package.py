@@ -198,8 +198,8 @@ class ProjectPackage:
         self._current_size += size_add
 
     def _enqueue_new_archives(self, directory: Path):
-        """扫描目录直接子项，将新压缩包入队（避免递归 rglob）"""
-        for item in directory.iterdir():
+        """递归扫描目录，将新压缩包入队（visited 集合防重复）"""
+        for item in directory.rglob('*'):
             if item.is_file() and item.suffix.lower() in ('.zip', '.rar', '.7z', '.qgz'):
                 if item.resolve() not in self._visited:
                     self._queue.append(item)

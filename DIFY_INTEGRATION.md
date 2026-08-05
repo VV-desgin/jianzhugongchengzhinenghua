@@ -68,7 +68,15 @@ curl -X POST http://127.0.0.1:8000/agent/data-pipeline \
 - 异常时返回结构化 `errors`，不会输出 Traceback。
 - `project_type` 枚举：`survey_design`、`full_design`、`as_built`、`unknown`。
 
-## 四、环境要求
+## 四、BOM / 纤芯分配数据接口
+
+- `GET /project/{id}/bom-tables` — BOM 物料表清单（BOM_LIST.xlsx / material_code.xls 等）。
+- `GET /project/{id}/fiber-tables` — 纤芯数据清单（SRO-TOPO 纤芯表 + BOX/CABLE/SRO GPKG 矢量层）。
+- `GET /project/{id}/table-data?file=...&sheet=...&limit=100` — 读取指定表格/层数据。
+- `POST /agent/data-pipeline` 可传 `include_tables=true`，回应额外包含 `bom_tables`/`fiber_tables`。
+- 流程建议：第一步上传拿 `project_id`，后续节点用上述接口取 BOM/纤芯数据。
+
+## 五、环境要求
 
 - Python 3.10 ~ 3.14（推荐 3.12）。
 - 安装：`pip install -r requirements.txt`。Python 3.14 上 pip 会提示 `Ignoring fiona`（预期行为），自动安装 pyshp 纯 Python 回退，SHP 读取不受影响。

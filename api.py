@@ -25,6 +25,10 @@ from design_parser.excel_reader import read_excel
 from design_parser.pdf_reader import extract_text_from_pdf
 from design_parser.package import ProjectPackage
 from design_parser.project_data import ProjectData
+from design_parser.bom_fiber_reader import (
+    find_excel_files, find_gpkg_files, workbook_summary,
+    read_sheet_rows, gpkg_summary, read_gpkg_rows,
+)
 from design_parser.rule_engine import ALL_RULES, RuleContext
 from design_parser.check_result import CheckResult
 from schemas import (
@@ -323,6 +327,68 @@ async def get_layers(project_id: str):
     proj = get_project(project_id)
     infos = proj.get_layer_info()
     return build_response(data=infos)
+
+
+def _project_roots(proj):
+    """返回项目的解压根目录列表（外层/内层/包装）。"""
+    roots = []
+    pkg = getattr(proj, "package", None)
+    if pkg is not None:
+        roots.append(pkg.temp_dir)
+    outer = getattr(proj, "outer_package", None)
+    if outer is not None and outer.temp_dir not in roots:
+        roots.append(outer.temp_dir)
+    for ip in getattr(proj, "inner_packages", []) or []:
+        if ip.temp_dir not in roots:
+            roots.append(ip.temp_dir)
+    return roots
+
+
+def _find_table_file(roots, file_name):
+    for root in roots:
+        for p in Path(root).rglob(file_name):
+            if p.is_file():
+                return p
+    return None
+
+
+@app.get("/project/{project_id}/bom-tables", response_model=ApiResponse)
+async def get_bom_tables(project_id: str):
+    """列出项目中的 BOM 物料表（Excel）及前 50 行样例。"""
+    proj = get_project(project_id)
+    files = []
+    for root in _project_roots(proj):
+        for f in find_excel_files(Path(root), kinds=("bom",)):
+            files.append(workbook_summary(f, row_limit=50))
+    return build_response(data={"files": files})
+
+
+@app.get("/project/{project_id}/fiber-tables", response_model=ApiResponse)
+async def get_fiber_tables(project_id: str):
+    """列出项目中的纤芯数据：纤芯表格（Excel）与 BOX/CABLE/SRO 矢量层（GPKG）。"""
+    proj = get_project(project_id)
+    workbooks, vectors = [], []
+    for root in _project_roots(proj):
+        root_p = Path(root)
+        for f in find_excel_files(root_p, kinds=("fiber",)):
+            workbooks.append(workbook_summary(f, row_limit=50))
+        for g in find_gpkg_files(root_p):
+            vectors.append(gpkg_summary(g))
+    return build_response(data={"workbooks": workbooks, "vectors": vectors})
+
+
+@app.get("/project/{project_id}/table-data", response_model=ApiResponse)
+async def get_table_data(project_id: str, file: str, sheet: Optional[str] = None, limit: int = 100):
+    """读取指定表格数据：file 为文件名，sheet 可省；GPKG 按层读取。"""
+    proj = get_project(project_id)
+    p = _find_table_file(_project_roots(proj), file)
+    if p is None:
+        raise HTTPException(404, f"未找到表格文件: {file}")
+    limit = max(1, min(limit, 1000))
+    if p.suffix.lower() == ".gpkg":
+        return build_response(data=read_gpkg_rows(p, limit=limit))
+    return build_response(data=read_sheet_rows(p, sheet=sheet, limit=limit))
+
 
 @app.get("/project/{project_id}/engineering-data", response_model=ApiResponse)
 async def get_engineering_data(project_id: str):
@@ -726,6 +792,7 @@ async def data_pipeline(
     file_url: Optional[str] = Body(None),
     excel_limit: int = Body(500),
     pdf_chars: int = Body(3000),
+    include_tables: bool = Body(False),
 ):
     """
     纯数据流水线：不经过 LLM，直接将解析与审查的结构化 JSON 返回。
@@ -779,6 +846,8 @@ async def data_pipeline(
         "excel_data": {},
         "pdf_text": {},
         "engineering_data": {"project_id": project_id, "project_type": "unknown", "objects": {"cable": [], "boite": [], "ptech": []}},
+        "bom_tables": {"files": []},
+        "fiber_tables": {"workbooks": [], "vectors": []},
     }
 
     proj = None
@@ -809,6 +878,18 @@ async def data_pipeline(
                 "project_type": getattr(proj, "project_type", "unknown"),
                 "objects": proj.get_engineering_data()["objects"],
             }
+            if include_tables:
+                bom_files, fiber_wb, fiber_vec = [], [], []
+                for root in _project_roots(proj):
+                    root_p = Path(root)
+                    for f in find_excel_files(root_p, kinds=("bom",)):
+                        bom_files.append(workbook_summary(f, row_limit=50))
+                    for f in find_excel_files(root_p, kinds=("fiber",)):
+                        fiber_wb.append(workbook_summary(f, row_limit=50))
+                    for g in find_gpkg_files(root_p):
+                        fiber_vec.append(gpkg_summary(g))
+                result["bom_tables"] = {"files": bom_files}
+                result["fiber_tables"] = {"workbooks": fiber_wb, "vectors": fiber_vec}
             for _f in getattr(proj, "extract_failures", []):
                 result["warnings"].append(f"解压失败: {_f}")
         except Exception as e:
