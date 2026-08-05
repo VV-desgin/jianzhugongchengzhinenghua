@@ -27,11 +27,7 @@ def survey_zip_path():
     env = os.environ.get("SURVEY_ZIP", "").strip()
     if env:
         candidates.append(Path(env))
-    candidates.extend([
-        PROJECT_ROOT / "tests" / "data" / "场勘设计图.zip",
-        Path(r"D:\通信建筑工程全流程 Agent 项目\赛题一\场勘设计图.zip"),
-        Path(r"D:\通信建筑工程全流程 Agent 项目\场勘设计图.zip"),
-    ])
+    candidates.append(PROJECT_ROOT / "tests" / "data" / "场勘设计图.zip")
     for p in candidates:
         if p.is_file():
             return p

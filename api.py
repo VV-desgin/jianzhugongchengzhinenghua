@@ -100,7 +100,7 @@ logger.add("api.log", rotation="10 MB", level="DEBUG", format="{time:YYYY-MM-DD 
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc: HTTPException):
-    """?????????{success:false, data:null, error:{code,message}}?"""
+    """HTTP 异常统一返回 {success:false, data:null, error:{code,message}} 结构。"""
     return JSONResponse(
         status_code=exc.status_code,
         content=build_response(success=False, data=None,
@@ -110,8 +110,8 @@ async def http_exception_handler(request, exc: HTTPException):
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request, exc: Exception):
-    """???????????? Traceback?"""
-    logger.exception(f"?????: {exc}")
+    """未捕获异常统一返回 500，并记录 Traceback。"""
+    logger.exception(f"未处理异常: {exc}")
     return JSONResponse(
         status_code=500,
         content=build_response(success=False, data=None,
@@ -779,9 +779,9 @@ async def full_pipeline(
             blocking_reasons = []
             fix_suggestions = []
             for issue in serious_issues:
-                rid = issue.get("rule_id", "?")
-                obj = issue.get("check_object", "?")
-                desc = issue.get("error_description", "?")
+                rid = issue.get("rule_id", "未知")
+                obj = issue.get("check_object", "未知")
+                desc = issue.get("error_description", "未知")
                 blocking_reasons.append(f"规则 {rid}: {obj} — {desc}")
                 if rid in ("R005", "R005_4"):
                     fix_suggestions.append(
@@ -1478,9 +1478,9 @@ async def orchestrate(
             blocking_reasons = []
             fix_suggestions = []
             for issue in serious_list_for_response:
-                rid = issue.get("rule_id", "?")
-                obj = issue.get("check_object", "?")
-                desc = issue.get("error_description", "?")
+                rid = issue.get("rule_id", "未知")
+                obj = issue.get("check_object", "未知")
+                desc = issue.get("error_description", "未知")
                 blocking_reasons.append(f"规则 {rid}: {obj} — {desc}")
                 if rid in ("R005", "R005_4"):
                     fix_suggestions.append(

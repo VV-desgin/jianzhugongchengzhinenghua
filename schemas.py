@@ -44,7 +44,7 @@ class FileInfo(BaseModel):
 
 class InspectResponse(BaseModel):
     file_name: str
-    is_archive: bool           # 是否为压缩包
+    is_archive: bool
     archive_type: Optional[str] # zip, rar, qgz 等
     files_inside: Optional[List[FileInfo]] = None
     file_category: Optional[str] = None  # 场勘设计图/完整设计图/竣工图/...

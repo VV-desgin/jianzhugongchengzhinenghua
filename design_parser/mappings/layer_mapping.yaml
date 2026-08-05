@@ -512,16 +512,6 @@ csv_validation:
   - csv_file: "l_ptc_type.csv"
     target_layer: "PTECH"
     target_field: "TYPE"
-  # 以下可根据需要添加
-  # - csv_file: "l_ptc_nature.csv"
-  #   target_layer: "PTECH"
-  #   target_field: "NATURE"
-  # - csv_file: "l_imb_bat.csv"
-  #   target_layer: "IMB"
-  #   target_field: "TYPE_BATIM"
-  # - csv_file: "l_imb_type.csv"
-  #   target_layer: "IMB"
-  #   target_field: "TYPE_CLIEN"
 
 # ===================== 容差配置 =====================
 tolerances:

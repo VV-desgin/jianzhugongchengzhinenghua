@@ -28,7 +28,7 @@ except ModuleNotFoundError as exc:
 import json
 import pandas as pd
 
-# BOM/??????????????????????????? + ?????
+# 统一工程对象字段映射（cable/boite/ptech 等，仅输出约定字段）
 ENGINEERING_OBJECTS = {
     "cable": {
         "code": ["CODE", "CABLE_CODE"],
@@ -776,11 +776,11 @@ class ProjectData:
             })
         return infos
     def get_engineering_data(self) -> dict:
-        """?????????? BOM / ???????????
+        """汇总统一工程数据（BOM / 纤芯相关对象）。
 
-        ???? objects.cable / objects.boite / objects.ptech?
-        ???? code?longueur?capacite?type?nb_fibre_util?hauteur_appui?
-        ????????????? None???????????
+        返回 objects.cable / objects.boite / objects.ptech / site / infrastructure 列表；
+        仅输出映射字段（code/longueur/capacite/type/nb_fibre_util/hauteur_appui），
+        字段值为 None 时不写入 JSON。
         """
         result = {"objects": {"cable": [], "boite": [], "ptech": [], "site": [], "infrastructure": []}}
         for obj_key, field_map in ENGINEERING_OBJECTS.items():
@@ -798,7 +798,7 @@ class ProjectData:
                             value = v
                             break
                     if value is None:
-                        continue  # ????/????????? JSON ????
+                        continue  # 值为 None 的字段不写入 JSON 输出
                     if out_field in ("longueur", "capacite", "nb_fibre_util", "hauteur_appui"):
                         try:
                             num = float(value)
@@ -811,7 +811,7 @@ class ProjectData:
         return result
 
     def _find_engineering_layer(self, prefix: str) -> Optional[str]:
-        """?????????????? CABLE?BOITE?PTECH??"""
+        """按前缀查找工程对象图层（如 CABLE/BOITE/PTECH）。"""
         for key in self.layers:
             if key.upper().startswith(prefix):
                 return key
@@ -833,7 +833,7 @@ class ProjectData:
         relation_layers = ("BOITE", "PTECH", "SITE", "IMB", "INFRASTRUCTURE", "ZNRO", "ZPM")
 
         def is_relation_layer(upper):
-            if upper.startswith(("L_", "TYPE")):  # CSV ????l_xxx/Type xxx????????
+            if upper.startswith(("L_", "TYPE")):  # CSV 参考表（l_xxx / Type xxx）不作为关系图层
                 return False
             return any(upper == rl or upper.startswith(rl) for rl in relation_layers)
         index = {}

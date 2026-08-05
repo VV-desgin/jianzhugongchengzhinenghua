@@ -1,7 +1,7 @@
 # design_parser/check_result.py
 from pydantic import BaseModel, Field
 from typing import Optional
-#审查结果模型
+
 class CheckResult(BaseModel):
     check_object: str = Field(description="检查对象，如'图层 boite 第3条记录'")
     passed: bool = Field(description="是否通过")
