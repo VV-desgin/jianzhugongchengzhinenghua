@@ -1,4 +1,4 @@
-""" 10 个标准测试案例的自动化验证（标准答案由我们基于官方规则库判定）。
+"""10 个标准测试案例的自动化验证（标准答案由我们基于官方规则库判定）。
 
 每个案例文件在 tests/data/standard_cases/ 下，期望命中的规则编号见下方映射。
 运行：python -m pytest tests/test_standard_cases.py -q

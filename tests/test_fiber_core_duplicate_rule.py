@@ -1,6 +1,6 @@
 """P0-2：纤芯重复占用规则（R-FIBER-001）接入正式规则引擎。
 
-- case_checks.find_fiber_core_duplicates 为公共检测函数（案例逻辑）；
+- case_checks.find_fiber_core_duplicates 为公共检测函数（标准案例逻辑）；
 - 规则引擎 check_fiber_core_duplicate 读取项目内纤芯 Excel 表执行；
 - 注册进 ALL_RULES/RULE_IDS/SEVERITY_MAP 后，run_rule / run_all_rules 自动包含。
 """
