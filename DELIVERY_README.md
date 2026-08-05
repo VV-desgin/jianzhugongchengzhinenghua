@@ -44,8 +44,9 @@
 - 新增 BOM/纤芯数据接口：`GET /project/{id}/bom-tables`、`GET /project/{id}/fiber-tables`、`GET /project/{id}/table-data`，支持解析 BOM_LIST/物料编码库/纤芯 TOPO 表格与 BOX/CABLE/SRO GPKG 层；`/agent/data-pipeline` 可传 `include_tables=true` 一并返回表格清单。
 - 新增 Excel 规则解析器：`GET /project/{id}/rule-library` 解析官方《图层表字段说明和数据校验规则.xlsx》，输出校验规则、字段说明与可执行条件（含字段类型/长度，共约 400 条）。
 - 新增上下游关系建模：`GET /project/{id}/relations` 返回 CABLE 端点→设备对象边、未解析引用、BOITE/SITE 引用字段、端点距离统计（单位米）。
-- 新增规程知识库解析器：`GET /project/{id}/gis-check` 空间审查（R-GIS-001~006，端点容差 0.5m）。
-- 新增规程知识库解析器：`GET /project/{id}/procedure-kb` 检索施工规程（施工对象/工序/步骤/材料/工艺/测试/安全/验收/常见错误/页码来源）（必填/唯一/空图层/坐标系/孤立性/几何检测/容量限制）。
+- 新增 GIS 空间审查：`GET /project/{id}/gis-check`（R-GIS-001~006，端点容差 0.5m）。
+- 新增规程知识库解析器：`GET /project/{id}/procedure-kb` 检索施工规程（施工对象/工序/步骤/材料/工艺/测试/安全/验收/常见错误/页码来源）。
+- 新增安全距离审查：`GET /project/{id}/safety-check`（R-SAFE-001~009，阈值来自施工安全材料：离地高度 4.5/7m、电力线交越 2/4/3/5m、管线平行/交叉净距表）。
 
 ### 修复点7：LLM 接口边界
 - LLM_API_URL/LLM_API_KEY/LLM_MODEL 从环境变量读取；缺少配置时 `/agent/orchestrate` 返回 502 "LLM 未配置"，不影响 `/agent/data-pipeline`、`/health` 和基础解析接口。

@@ -1,0 +1,37 @@
+{
+  "source": "河源市江东新区临江镇“三线”整治项目施工图（数据方提供，2023-02），光缆与电力线平行/交越敷设施工安全注意事项",
+  "wall_cable": {
+    "min_ground_height_m": 4.5,
+    "note": "墙壁光缆跨越街坊、院落时，光缆最低距地面不小于4.5米；过街楼穿越时不低于街楼底层高度"
+  },
+  "aerial_cable": {
+    "road_crossing_min_ground_height_m": 7.0,
+    "note": "架空方式跨越公路时，光缆敷设最低点距地面不少于7米"
+  },
+  "power_line_crossing_vertical_m": {
+    "10kv_below": { "with_lightning_protection": 2.0, "without_lightning_protection": 4.0 },
+    "35kv_110kv": { "with_lightning_protection": 3.0, "without_lightning_protection": 5.0 },
+    "note": "与10KV以下电力线交越：有防雷保护垂直净距2米，无防雷保护4米；35KV~110KV：有保护3米，无保护5米"
+  },
+  "drop_wire": {
+    "aerial_cable_vertical_m": 0.6,
+    "wall_cable_parallel_m": 0.2,
+    "note": "架空光缆与供电线接户线垂直净距0.6米；墙壁光缆与供电线接户线平行净距0.2米"
+  },
+  "wall_cable_clearances_mm": {
+    "避雷线接地引线": { "parallel_mm": 1000, "crossing_mm": 300 },
+    "工作保护地线":   { "parallel_mm": 50,   "crossing_mm": 20 },
+    "电力线":         { "parallel_mm": 150,  "crossing_mm": 50 },
+    "给水管":         { "parallel_mm": 150,  "crossing_mm": 20 },
+    "压缩空气管":     { "parallel_mm": 150,  "crossing_mm": 20 },
+    "热力管":         { "parallel_mm": 500,  "crossing_mm": 500 }
+  },
+  "utility_layer_keywords": {
+    "电力线":     ["电力", "POWER", "ELEC"],
+    "给水管":     ["给水", "WATER", "EAU"],
+    "压缩空气管": ["压缩空气", "AIR"],
+    "热力管":     ["热力", "HEAT", "CHALEUR"],
+    "避雷线接地引线": ["避雷", "LIGHTNING", "Foudre"],
+    "工作保护地线":   ["保护地", "GROUND", "Terre"]
+  }
+}
