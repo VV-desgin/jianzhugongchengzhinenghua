@@ -74,6 +74,7 @@ curl -X POST http://127.0.0.1:8000/agent/data-pipeline \
 - `GET /project/{id}/fiber-tables` — 纤芯数据清单（SRO-TOPO 纤芯表 + BOX/CABLE/SRO GPKG 矢量层）。
 - `GET /project/{id}/table-data?file=...&sheet=...&limit=100` — 读取指定表格/层数据。
 - `GET /project/{id}/rule-library` — 官方规则库解析
+- `GET /project/{id}/gis-check?tolerance=0.5` — GIS 空间审查（范围重叠/包含/自环/端点重合）
 - `GET /project/{id}/procedure-kb?keyword=xxx` — 施工规程知识库检索
 - `GET /project/{id}/relations` — 上下游关系建模（CABLE 端点→设备、引用字段、端点距离统计），供纤芯分配/关系级审查使用。（校验规则/字段说明/可执行条件），供智能审查工作流调用。
 - `POST /agent/data-pipeline` 可传 `include_tables=true`，回应额外包含 `bom_tables`/`fiber_tables`。

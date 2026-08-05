@@ -427,6 +427,14 @@ async def get_procedure_kb(project_id: str, keyword: Optional[str] = None):
     return build_response(data={"file": "", "entries": []})
 
 
+@app.get("/project/{project_id}/gis-check", response_model=ApiResponse)
+async def get_gis_check(project_id: str, tolerance: float = 0.5):
+    """GIS 空间检查（R-GIS-001~006）：范围重叠/包含/自环/端点重合，容差默认 0.5 米。"""
+    from design_parser.gis_rules import run_gis_checks
+    proj = get_project(project_id)
+    return build_response(data=run_gis_checks(proj, tolerance_m=tolerance))
+
+
 @app.get("/project/{project_id}/engineering-data", response_model=ApiResponse)
 async def get_engineering_data(project_id: str):
     """返回统一工程对象数据（objects.cable/boite/ptech），供 BOM / 纤芯分配工作流使用。"""
