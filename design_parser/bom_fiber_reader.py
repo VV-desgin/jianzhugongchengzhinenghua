@@ -72,6 +72,13 @@ def _xls_sheets(path: Path) -> List[Dict[str, Any]]:
     return [{"name": sh.name, "row_count": sh.nrows} for sh in wb.sheets()]
 
 
+def list_sheet_names(path: Path) -> List[str]:
+    """返回 Excel 文件所有工作表名（只读元数据，适合超大文件）。"""
+    if path.suffix.lower() == ".xlsx":
+        return [s["name"] for s in _xlsx_sheets(path)]
+    return [s["name"] for s in _xls_sheets(path)]
+
+
 def workbook_summary(path: Path, row_limit: int = DEFAULT_ROW_LIMIT) -> Dict[str, Any]:
     """返回 Excel 工作簿摘要：文件名、类型、每个工作表名称/行数/前 row_limit 行。"""
     suffix = path.suffix.lower()

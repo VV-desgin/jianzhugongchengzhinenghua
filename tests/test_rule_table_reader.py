@@ -80,6 +80,13 @@ def test_read_field_specs_and_executable(tmp_path):
     assert "layer_type_naming" in types
     assert "crs_consistent" in types
     assert "layer_not_empty" in types
+    # 官方字段说明 Type champ / Longueur champ → 可执行类型/长度条件
+    assert "field_type_check" in types
+    assert "field_length_check" in types
+    ft = next(e for e in exec_rules if e["check_type"] == "field_type_check")
+    assert ft["field"] == "CODE" and ft["rule_id"] == "R018"
+    fl = next(e for e in exec_rules if e["check_type"] == "field_length_check")
+    assert fl["field"] == "CODE" and fl["params"]["length"] == 30 and fl["rule_id"] == "R032"
 
 
 def test_rule_library_endpoint(client):

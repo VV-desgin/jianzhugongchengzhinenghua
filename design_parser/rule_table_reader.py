@@ -12,6 +12,7 @@
 """
 from pathlib import Path
 from typing import List, Dict, Any, Optional
+import re
 
 RULES_KEYWORDS = ("规则", "字段说明")
 VALIDATION_SHEET_NAMES = ("校验规则", "规则")
@@ -30,6 +31,17 @@ def find_rule_files(root: Path) -> List[Path]:
 
 def _norm(value: Any) -> str:
     return "" if value is None else str(value).replace("\n", " ").strip()
+
+
+def _parse_length(raw: str) -> Optional[int]:
+    """从官方 Longueur champ 列提取正整数长度（兼容 '30' / '30.0' / 'max 30'）。"""
+    m = re.search(r"\d+", raw or "")
+    if not m:
+        return None
+    try:
+        return int(m.group(0))
+    except (ValueError, TypeError):
+        return None
 
 
 def _sheet_rows(path: Path, sheet: Optional[str] = None):
@@ -170,6 +182,29 @@ def build_executable_rules(field_specs: Dict[str, list],
                     "field": f["name"],
                     "params": {"required": f["required"]},
                     "source": f"{layer}字段说明",
+                })
+
+    # 1.1) 图层字段说明中的类型/长度约束（官方 Type champ / Longueur champ）
+    for layer, fields in field_specs.items():
+        for f in fields:
+            if f["type"]:
+                out.append({
+                    "check_type": "field_type_check",
+                    "object_type": layer,
+                    "field": f["name"],
+                    "params": {"type": f["type"]},
+                    "source": f"{layer}字段说明",
+                    "rule_id": "R018",
+                })
+            length = _parse_length(f["length"])
+            if length is not None:
+                out.append({
+                    "check_type": "field_length_check",
+                    "object_type": layer,
+                    "field": f["name"],
+                    "params": {"length": length, "raw_length": f["length"]},
+                    "source": f"{layer}字段说明",
+                    "rule_id": "R032",
                 })
 
     # 2) 校验规则表 → 按关键词归类（顺序敏感：先精确后宽泛）

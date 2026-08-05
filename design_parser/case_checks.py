@@ -50,6 +50,45 @@ def _cell(row: list, idx: int):
     return None if v is None or str(v).strip() == "" else str(v).strip()
 
 
+def find_fiber_core_duplicates(sheets: Dict[str, List[list]]) -> List[Dict[str, Any]]:
+    """R-FIBER-001：在纤芯连接与分配表中，无分路器时同一输入纤芯被重复使用。
+
+    输入 sheets 为 {工作表名: 行列表}，首行为表头；兼容任意包含
+    「所属节点/托盘编号/光分路器/IN」列的工作表（真实项目的纤芯拓扑表亦适用）。
+    """
+    issues: List[Dict[str, Any]] = []
+    for rows in sheets.values():
+        if not rows:
+            continue
+        node_idx = _col(rows[0], "所属节点")
+        tray_idx = _col(rows[0], "托盘编号")
+        spl_idx = _col(rows[0], "光分路器")
+        in_idx = _col(rows[0], "IN")
+        if min(node_idx, tray_idx, spl_idx, in_idx) < 0:
+            continue
+        splice_in = {}
+        for i, r in enumerate(rows[1:], 1):
+            spl = _cell(r, spl_idx) or ""
+            if spl and spl != "无":
+                continue
+            node = _cell(r, node_idx) or ""
+            tray = _cell(r, tray_idx) or ""
+            core = _cell(r, in_idx) or ""
+            if not core:
+                continue
+            key = (node, tray, core)
+            if key in splice_in:
+                issues.append({
+                    "rule_id": "R-FIBER-001",
+                    "object": f"{node}/{tray}/{core}",
+                    "message": f"输入纤芯 {core} 在 {node}/{tray} 被重复使用"
+                               f"（第 {splice_in[key]} 行与第 {i} 行）",
+                })
+            else:
+                splice_in[key] = i
+    return issues
+
+
 def check_case(path: Path, known_material_codes: set = None) -> List[Dict[str, Any]]:
     """对单个案例执行全部判定，返回 issue 列表。"""
     sheets = load_case_sheets(path)
@@ -158,20 +197,7 @@ def check_case(path: Path, known_material_codes: set = None) -> List[Dict[str, A
                                "message": f"分路器 {spl} 输出 {len(distinct)} 路，超过容量 {capacity}"})
 
         # 7) 纤芯重复占用：无分路器时同一输入被重复使用（R-FIBER-001）
-        splice_in = {}
-        for i, r in enumerate(fiber_rows[1:], 1):
-            spl = _cell(r, spl_idx) or ""
-            if spl and spl != "无":
-                continue
-            node = _cell(r, node_idx) or ""
-            tray = _cell(r, tray_idx) or ""
-            core = _cell(r, in_idx) or ""
-            key = (node, tray, core)
-            if key in splice_in:
-                issues.append({"rule_id": "R-FIBER-001", "object": f"{node}/{tray}/{core}",
-                               "message": f"输入纤芯 {core} 在 {node}/{tray} 被重复使用（第 {splice_in[key]} 行与第 {i} 行）"})
-            else:
-                splice_in[key] = i
+        issues.extend(find_fiber_core_duplicates(sheets))
 
     # 8) BOM 物料无法匹配（R-BOM-001）
     bom_rows = rows_of("BOM物料")

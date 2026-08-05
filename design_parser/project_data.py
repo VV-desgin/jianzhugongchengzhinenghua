@@ -65,6 +65,8 @@ class ProjectData:
         self.outer_package = outer_pkg
         self.inner_packages = []
         self.extract_failures = list(outer_pkg.extract_failures)
+        # 官方规则库缓存（首次访问时解析，无规则表时为空字典）
+        self._rule_library = None
 
         qgs_files = list(outer_pkg.temp_dir.rglob('*.qgs'))
 
@@ -1003,6 +1005,27 @@ class ProjectData:
             if r.severity is None:
                 r.severity = SEVERITY_MAP.get(r.rule_id, "warning")
         return results
+
+    def get_rule_library(self) -> dict:
+        """返回项目内官方规则库（字段说明/校验规则/可执行条件），首次访问解析并缓存。"""
+        if getattr(self, "_rule_library", None) is not None:
+            return self._rule_library
+        from .rule_table_reader import find_rule_files, parse_rule_library
+        roots = []
+        for attr in ("package", "outer_package"):
+            pkg = getattr(self, attr, None)
+            if pkg is not None and getattr(pkg, "temp_dir", None) is not None:
+                roots.append(pkg.temp_dir)
+        for ip in getattr(self, "inner_packages", []) or []:
+            if getattr(ip, "temp_dir", None) is not None:
+                roots.append(ip.temp_dir)
+        for root in roots:
+            files = find_rule_files(Path(root))
+            if files:
+                self._rule_library = parse_rule_library(files[0])
+                return self._rule_library
+        self._rule_library = {}
+        return self._rule_library
 
     def find_file(self, extensions: list, filename: str = None):
         """在解压目录中递归查找符合条件的文件,返回第一个匹配路径或 None"""

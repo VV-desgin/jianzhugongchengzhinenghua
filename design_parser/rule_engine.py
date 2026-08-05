@@ -32,6 +32,7 @@ RULE_IDS = {
     "CABLE_ENDPOINT_NOT_ON_DEVICE": "R010",
     "CAPACITY_EXCEEDED": "R011",
     "FIBER_DUPLICATE": "R012",
+    "FIBER_CORE_DUPLICATE": "R-FIBER-001",
     "LAYER_EMPTY": "R016",
     "CRS_INCONSISTENT": "R017",
     "FIELD_TYPE_CHECK": "R018",
@@ -86,6 +87,7 @@ SEVERITY_MAP = {
     "R008": "error",
     "R011": "error",
     "R012": "error",
+    "R-FIBER-001": "error",
     "R019": "error",
     "R033": "error",
 }
@@ -183,6 +185,13 @@ class RuleContext:
                 if code and code not in self.device_code_index:
                     self.device_code_index[code] = None
 
+
+        # 官方规则库（图层字段说明/可执行条件），由 ProjectData 缓存，解析失败时置空
+        self.rule_library = None
+        try:
+            self.rule_library = project_data.get_rule_library()
+        except Exception:
+            self.rule_library = None
 
 def _safe_geometry(obj):
     """安全获取几何属性，兼容 UnifiedFeature._geometry 和模型对象.geometry"""
@@ -392,6 +401,120 @@ def check_field_type_invalid(ctx: RuleContext) -> List[CheckResult]:
                         error_description=f"字段 '{field}' 应为浮点数类型，实际为 {type(value).__name__}"
                     ))
     return results
+
+
+def _field_specs_by_layer(ctx: RuleContext) -> Dict[str, List[Dict[str, Any]]]:
+    """返回官方规则库中的图层字段说明（{图层: [字段字典]}），无规则库时为空。"""
+    lib = getattr(ctx, "rule_library", None) or {}
+    return lib.get("field_specs", {}) or {}
+
+
+def _match_spec_layer(spec_layer: str, layer_name: str) -> bool:
+    """官方字段说明 sheet（如 BOITE/CABLE）与运行时图层名匹配（大小写不敏感）。"""
+    s = spec_layer.strip().upper()
+    n = layer_name.strip().upper()
+    return bool(s) and s in n
+
+
+def _case_insensitive_get(props: Dict[str, Any], key: str):
+    """字段读取：优先精确匹配，其次大小写不敏感匹配（DBF/GPKG 字段名可能大小写不一）。"""
+    if key in props:
+        return props[key]
+    k_upper = key.upper()
+    for k, v in props.items():
+        if str(k).upper() == k_upper:
+            return v
+    return None
+
+
+def _normalize_type_name(raw: str) -> str:
+    return raw.upper().replace("É", "E").replace("È", "E").strip()
+
+
+_NUMERIC_TYPE_NAMES = (
+    "ENTIER", "INTEGER", "INT", "LONG", "SMALLINT",
+    "DOUBLE", "NUMERIQUE", "NUMERIC", "REEL", "REAL", "DECIMAL", "FLOAT", "NUMBER",
+)
+
+
+def _is_missing_sentinel(value) -> bool:
+    """常见缺失值标记（NA / N/A / SANS OBJET / NULL / 空串）不算类型或长度违规。"""
+    if value is None:
+        return True
+    if isinstance(value, str):
+        s = value.strip()
+        if not s:
+            return True
+        return s.upper() in ("NA", "N/A", "NULL", "NONE", "SANS OBJET", "/")
+    return False
+
+
+def _is_int_like(value) -> bool:
+    """整数值判定：int/整数 float/可转换字符串（含 '144.0'、千分位下划线）均通过。"""
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, int):
+        return True
+    if isinstance(value, float):
+        return value.is_integer()
+    if isinstance(value, str):
+        s = value.strip().replace(" ", "").replace("_", "")
+        if not s:
+            return False
+        try:
+            return float(s.replace(",", ".")).is_integer()
+        except ValueError:
+            return False
+    return False
+
+
+def _is_number_like(value) -> bool:
+    """数值判定：int/float/可转换字符串（兼容小数逗号）通过。"""
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, (int, float)):
+        return True
+    if isinstance(value, str):
+        s = value.strip().replace(" ", "")
+        if not s:
+            return False
+        try:
+            float(s.replace(",", "."))
+            return True
+        except ValueError:
+            return False
+    return False
+
+
+def _official_type_check(field: str, spec_type: str, value) -> Optional[str]:
+    """按官方 Type champ 校验值类型；通过返回 None，不通过返回期望类型标签。"""
+    t = _normalize_type_name(spec_type)
+    if t in ("ENTIER", "INTEGER", "INT", "LONG", "SMALLINT"):
+        return None if _is_int_like(value) else "整数"
+    if t in ("DOUBLE", "NUMERIQUE", "NUMERIC", "REEL", "REAL", "DECIMAL", "FLOAT", "NUMBER"):
+        return None if _is_number_like(value) else "数值"
+    return None  # Texte / 未知类型不强制，避免误报
+
+
+def _field_value_for_length(value):
+    """长度计算用字符串：整数 float 去掉 .0 尾缀，字符串去首尾空白，避免长度误报。"""
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
+    if isinstance(value, str):
+        return value.strip()
+    return str(value)
+
+
+def _parse_spec_length(raw: str) -> Optional[int]:
+    """从官方 Longueur champ 提取正整数（如 '30' / '30.0'）。"""
+    import re as _re
+    m = _re.search(r"\d+", raw or "")
+    if not m:
+        return None
+    try:
+        return int(m.group(0))
+    except (ValueError, TypeError):
+        return None
 
 
 def check_code_duplicate(ctx: RuleContext) -> List[CheckResult]:
@@ -622,6 +745,95 @@ def check_fiber_duplicate(ctx: RuleContext) -> List[CheckResult]:
     return results
 
 
+def _project_roots(ctx: RuleContext) -> List[Path]:
+    """返回项目包全部解压根目录（外层包/主包/内嵌包），不存在时返回空。"""
+    roots: List[Path] = []
+    for attr in ("package", "outer_package"):
+        pkg = getattr(ctx, attr, None)
+        if pkg is not None and getattr(pkg, "temp_dir", None) is not None:
+            roots.append(Path(pkg.temp_dir))
+    for ip in getattr(ctx, "inner_packages", []) or []:
+        if getattr(ip, "temp_dir", None) is not None:
+            roots.append(Path(ip.temp_dir))
+    return [r for r in roots if r.exists()]
+
+
+FIBER_SHEET_KEYWORDS = ("纤芯", "接续", "分配", "topo", "splice", "fiber", "fibre")
+FIBER_SHEET_ROW_LIMIT = 1000
+
+
+def _find_fiber_excel_sheets(ctx: RuleContext) -> Dict[str, Dict[str, Any]]:
+    """收集项目内纤芯相关 Excel 工作表（{文件路径: {sheet: {headers, rows}}}）。
+
+    只读取工作表名含纤芯/接续/分配/topo/splice/fiber 关键词的表，单表最多
+    FIBER_SHEET_ROW_LIMIT 行，避免扫描 BOM 大表拖慢规则引擎。
+    """
+    from .bom_fiber_reader import EXCEL_EXTS, list_sheet_names, read_sheet_rows
+
+    out: Dict[str, Dict[str, Any]] = {}
+    seen = set()
+    for root in _project_roots(ctx):
+        try:
+            files = sorted(root.rglob("*"))
+        except OSError:
+            continue
+        for f in files:
+            if not f.is_file() or f.suffix.lower() not in EXCEL_EXTS:
+                continue
+            try:
+                key = str(f.resolve())
+            except OSError:
+                continue
+            if key in seen:
+                continue
+            seen.add(key)
+            try:
+                names = list_sheet_names(f)
+            except Exception:
+                continue
+            wanted = [
+                n for n in names
+                if n == "纤芯连接与分配" or any(k in n.lower() for k in FIBER_SHEET_KEYWORDS)
+            ]
+            if not wanted:
+                continue
+            sheet_data = {}
+            for n in wanted:
+                try:
+                    data = read_sheet_rows(f, sheet=n, limit=FIBER_SHEET_ROW_LIMIT)
+                except Exception:
+                    continue
+                if data.get("headers"):
+                    sheet_data[n] = data
+            if sheet_data:
+                out[key] = sheet_data
+    return out
+
+
+def check_fiber_core_duplicate(ctx: RuleContext) -> List[CheckResult]:
+    """R-FIBER-001：纤芯连接与分配表中，无分路器时同一输入纤芯被重复使用。"""
+    from .case_checks import find_fiber_core_duplicates
+
+    results: List[CheckResult] = []
+    for sheet_data in _find_fiber_excel_sheets(ctx).values():
+        sheets = {
+            name: [data["headers"]] + data["rows"]
+            for name, data in sheet_data.items()
+        }
+        for issue in find_fiber_core_duplicates(sheets):
+            results.append(CheckResult(
+                check_object=f"纤芯 {issue['object']}",
+                passed=False,
+                problem_location=issue["object"],
+                actual_value="输入纤芯被重复使用",
+                expected_value="同一输入纤芯仅使用一次",
+                rule_id="R-FIBER-001",
+                error_description=issue["message"],
+                severity="error",
+            ))
+    return results
+
+
 def check_device_in_coverage(ctx: RuleContext, coverage_layer: str = "INFRASTRUCTURE") -> List[CheckResult]:
     results = []
     coverage_features = ctx.layers.get(coverage_layer, [])
@@ -814,60 +1026,89 @@ def check_crs_consistency(ctx: RuleContext, target_crs: Optional[str] = None) ->
 
 
 def check_field_types(ctx: RuleContext) -> List[CheckResult]:
-    yaml_path = Path(__file__).parent / "mappings" / "layer_mapping.yaml"
-    if not yaml_path.exists():
-        return []
-    with open(yaml_path, 'r', encoding='utf-8') as f:
-        config = yaml.safe_load(f)
-    layers_config = config.get('layers', {})
+    """R018: 字段类型检查 = YAML 配置（int/float）+ 官方字段说明 Type champ（Texte/Entier/Double…）。"""
     results = []
-    for layer_name, features in ctx.layers.items():
-        matched_config = None
-        for cfg_key in layers_config:
-            if cfg_key.upper() in layer_name.upper():
-                matched_config = layers_config[cfg_key]
-                break
-        if not matched_config:
-            continue
-        conversions = matched_config.get('type_conversions', {})
-        if not conversions:
-            continue
-        for feat in features:
-            props = feat.properties
-            for field, target_type in conversions.items():
-                if field not in props:
-                    continue
-                value = props[field]
-                if value is None:
-                    continue
-                if target_type == 'int':
-                    if not isinstance(value, int):
-                        try:
-                            int(value)
-                        except (ValueError, TypeError):
+    flagged = set()  # (图层, 要素, 字段) 已判定字段，避免 YAML 与官方字段说明重复报
+
+    # 1) YAML 图层配置中的类型转换（归一化字段名经 field_map 解析到原始字段）
+    yaml_path = Path(__file__).parent / "mappings" / "layer_mapping.yaml"
+    if yaml_path.exists():
+        with open(yaml_path, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f)
+        layers_config = config.get('layers', {})
+        for layer_name, features in ctx.layers.items():
+            matched_config = None
+            for cfg_key in layers_config:
+                if cfg_key.upper() in layer_name.upper():
+                    matched_config = layers_config[cfg_key]
+                    break
+            if not matched_config:
+                continue
+            conversions = matched_config.get('type_conversions', {})
+            if not conversions:
+                continue
+            field_map = matched_config.get('field_map', {}) or {}
+            for feat in features:
+                props = feat.properties
+                for norm_field, target_type in conversions.items():
+                    fm = field_map.get(norm_field)
+                    raw_fields = fm if isinstance(fm, list) and fm else [norm_field]
+                    for raw in raw_fields:
+                        value = props.get(raw)
+                        if _is_missing_sentinel(value):
+                            continue
+                        if target_type == 'int' and not _is_int_like(value):
                             results.append(CheckResult(
                                 check_object=f"{layer_name} 要素 {props.get('CODE', feat.feature_id)}",
                                 passed=False,
-                                problem_location=f"字段 {field}",
+                                problem_location=f"字段 {raw}",
                                 actual_value=str(value),
                                 expected_value="可转换为整数",
                                 rule_id=RULE_IDS["FIELD_TYPE_CHECK"],
-                                error_description=f"字段 '{field}' 的值 '{value}' 无法转换为整数"
+                                error_description=f"字段 '{raw}' 的值 '{value}' 无法转换为整数"
                             ))
-                elif target_type == 'float':
-                    if not isinstance(value, (int, float)):
-                        try:
-                            float(value)
-                        except (ValueError, TypeError):
+                            flagged.add((layer_name, feat.feature_id, raw.upper()))
+                        elif target_type == 'float' and not _is_number_like(value):
                             results.append(CheckResult(
                                 check_object=f"{layer_name} 要素 {props.get('CODE', feat.feature_id)}",
                                 passed=False,
-                                problem_location=f"字段 {field}",
+                                problem_location=f"字段 {raw}",
                                 actual_value=str(value),
                                 expected_value="可转换为浮点数",
                                 rule_id=RULE_IDS["FIELD_TYPE_CHECK"],
-                                error_description=f"字段 '{field}' 的值 '{value}' 无法转换为浮点数"
+                                error_description=f"字段 '{raw}' 的值 '{value}' 无法转换为浮点数"
                             ))
+                            flagged.add((layer_name, feat.feature_id, raw.upper()))
+                        break
+    # 2) 官方字段说明（Type champ）驱动：Entier→整数，Double/Numérique→数值，Texte 不强制
+    for spec_layer, fields in _field_specs_by_layer(ctx).items():
+        for layer_name, features in ctx.layers.items():
+            if not _match_spec_layer(spec_layer, layer_name):
+                continue
+            for f in fields:
+                field = f.get("name", "").strip()
+                spec_type = f.get("type", "").strip()
+                if not field or not spec_type:
+                    continue
+                for feat in features:
+                    props = feat.properties
+                    value = _case_insensitive_get(props, field)
+                    if _is_missing_sentinel(value):
+                        continue
+                    if (layer_name, feat.feature_id, field.upper()) in flagged:
+                        continue
+                    expected = _official_type_check(field, spec_type, value)
+                    if expected is None:
+                        continue
+                    results.append(CheckResult(
+                        check_object=f"{layer_name} 要素 {props.get('CODE', feat.feature_id)}",
+                        passed=False,
+                        problem_location=f"字段 {field}",
+                        actual_value=str(value),
+                        expected_value=expected,
+                        rule_id=RULE_IDS["FIELD_TYPE_CHECK"],
+                        error_description=f"字段 '{field}' 的值 '{value}' 应为{expected}（官方字段说明 Type={spec_type}）"
+                    ))
     return results
 
 
@@ -1612,40 +1853,76 @@ def check_field_domain(ctx: RuleContext) -> List[CheckResult]:
 
 
 def check_field_length(ctx: RuleContext) -> List[CheckResult]:
-    """R032: 检查字段值长度是否超过 YAML 中定义的最大长度"""
-    yaml_path = Path(__file__).parent / "mappings" / "layer_mapping.yaml"
-    if not yaml_path.exists():
-        return []
-    with open(yaml_path, 'r', encoding='utf-8') as f:
-        config = yaml.safe_load(f)
-    layers_config = config.get('layers', {})
+    """R032: 字段长度检查 = YAML 配置最大长度 + 官方字段说明 Longueur champ。"""
     results = []
-    for layer_name, features in ctx.layers.items():
-        matched_config = None
-        for cfg_key in layers_config:
-            if cfg_key.upper() in layer_name.upper():
-                matched_config = layers_config[cfg_key]
-                break
-        if not matched_config:
-            continue
-        field_lengths = matched_config.get('field_lengths', {})
-        if not field_lengths:
-            continue
-        for feat in features:
-            for field, max_len in field_lengths.items():
-                value = feat.properties.get(field)
-                if value is None:
+    flagged = set()  # (图层, 要素, 字段) 已判定字段，避免 YAML 与官方字段说明重复报
+
+    # 1) YAML 图层配置中的最大长度（保留既有行为，数值长度归一化避免 .0 误报）
+    yaml_path = Path(__file__).parent / "mappings" / "layer_mapping.yaml"
+    if yaml_path.exists():
+        with open(yaml_path, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f)
+        layers_config = config.get('layers', {})
+        for layer_name, features in ctx.layers.items():
+            matched_config = None
+            for cfg_key in layers_config:
+                if cfg_key.upper() in layer_name.upper():
+                    matched_config = layers_config[cfg_key]
+                    break
+            if not matched_config:
+                continue
+            field_lengths = matched_config.get('field_lengths', {})
+            if not field_lengths:
+                continue
+            for feat in features:
+                for field, max_len in field_lengths.items():
+                    value = feat.properties.get(field)
+                    if _is_missing_sentinel(value):
+                        continue
+                    text = _field_value_for_length(value)
+                    if len(text) > max_len:
+                        results.append(CheckResult(
+                            check_object=f"{layer_name} 要素 {feat.properties.get('CODE', feat.feature_id)}",
+                            passed=False,
+                            problem_location=f"字段 {field}",
+                            actual_value=f"长度 {len(text)}",
+                            expected_value=f"≤ {max_len}",
+                            rule_id="R032",
+                            error_description=f"字段 '{field}' 的长度 ({len(text)}) 超过最大允许长度 ({max_len})"
+                        ))
+                        flagged.add((layer_name, feat.feature_id, field.upper()))
+    # 2) 官方字段说明（Longueur champ）驱动
+    for spec_layer, fields in _field_specs_by_layer(ctx).items():
+        for layer_name, features in ctx.layers.items():
+            if not _match_spec_layer(spec_layer, layer_name):
+                continue
+            for f in fields:
+                field = f.get("name", "").strip()
+                max_len = _parse_spec_length(f.get("length", ""))
+                if not field or max_len is None:
                     continue
-                if len(str(value)) > max_len:
-                    results.append(CheckResult(
-                        check_object=f"{layer_name} 要素 {feat.properties.get('CODE', feat.feature_id)}",
-                        passed=False,
-                        problem_location=f"字段 {field}",
-                        actual_value=f"长度 {len(str(value))}",
-                        expected_value=f"≤ {max_len}",
-                        rule_id="R032",
-                        error_description=f"字段 '{field}' 的长度 ({len(str(value))}) 超过最大允许长度 ({max_len})"
-                    ))
+                spec_type = f.get("type", "").strip()
+                # 官方 Longueur 是 DBF 存储列宽（如 N(10,3)），数值字段用 Python float 字符串长度比较必误报，跳过
+                if _normalize_type_name(spec_type) in _NUMERIC_TYPE_NAMES:
+                    continue
+                for feat in features:
+                    props = feat.properties
+                    value = _case_insensitive_get(props, field)
+                    if _is_missing_sentinel(value):
+                        continue
+                    if (layer_name, feat.feature_id, field.upper()) in flagged:
+                        continue
+                    text = _field_value_for_length(value)
+                    if len(text) > max_len:
+                        results.append(CheckResult(
+                            check_object=f"{layer_name} 要素 {props.get('CODE', feat.feature_id)}",
+                            passed=False,
+                            problem_location=f"字段 {field}",
+                            actual_value=f"长度 {len(text)}",
+                            expected_value=f"≤ {max_len}",
+                            rule_id=RULE_IDS["FIELD_LENGTH_CHECK"],
+                            error_description=f"字段 '{field}' 的长度 ({len(text)}) 超过官方字段说明允许的最大长度 ({max_len})"
+                        ))
     return results
 
 
@@ -2326,6 +2603,7 @@ ALL_RULES = {
     "R010": check_cable_endpoint_on_device,
     "R011": check_capacity_exceeded,
     "R012": check_fiber_duplicate,
+    "R-FIBER-001": check_fiber_core_duplicate,
     "R013": check_device_in_coverage,
     "R014": check_cable_crossing_rule,
     "R015": check_distance_between,

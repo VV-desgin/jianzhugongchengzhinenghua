@@ -7,6 +7,7 @@ import tempfile
 import shutil
 import json
 import re
+import difflib
 import asyncio
 from collections import defaultdict
 from pathlib import Path
@@ -56,26 +57,26 @@ def _check_llm_config():
 RULE_ROUTING = {
     "完整设计图": [
         "R001","R002","R003","R004","R005","R005_4","R007","R008","R009",
-        "R010","R011","R013","R014","R015","R016","R017","R018",
-        "R019","R020","R021","R022","R023"
+        "R010","R011","R013","R014","R015","R016","R017","R018","R032",
+        "R019","R020","R021","R022","R023","R-FIBER-001"
     ],
     "场勘设计图": [
         "R001","R002","R003","R004","R005","R007"
     ],
     "竣工图": [
         "R001","R002","R003","R004","R005","R005_4","R007","R008","R009",
-        "R010","R011","R013","R014","R015","R016","R017","R018",
-        "R019","R020","R021","R022","R023"
+        "R010","R011","R013","R014","R015","R016","R017","R018","R032",
+        "R019","R020","R021","R022","R023","R-FIBER-001"
     ],
     "竣工图（含BOM）": [
         "R001","R002","R003","R004","R005","R005_4","R007","R008","R009",
-        "R010","R011","R013","R014","R015","R016","R017","R018",
-        "R019","R020","R021","R022","R023"
+        "R010","R011","R013","R014","R015","R016","R017","R018","R032",
+        "R019","R020","R021","R022","R023","R-FIBER-001"
     ],
     "设计图（含纤芯）": [
         "R001","R002","R003","R004","R005","R005_4","R007","R008","R009",
-        "R010","R011","R013","R014","R015","R016","R017","R018",
-        "R019","R020","R021","R022","R023"
+        "R010","R011","R013","R014","R015","R016","R017","R018","R032",
+        "R019","R020","R021","R022","R023","R-FIBER-001"
     ],
 }
 
@@ -304,6 +305,127 @@ def collect_unrecognized_fields(proj: ProjectData) -> List[Dict[str, str]]:
     
     return unrecognized
 
+def _load_layer_mapping_config() -> dict:
+    """加载 layer_mapping.yaml（文件缺失时返回空配置）。"""
+    yaml_path = Path(__file__).parent / "design_parser" / "mappings" / "layer_mapping.yaml"
+    if not yaml_path.exists():
+        return {}
+    with open(yaml_path, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f) or {}
+
+
+def _normalize_field_token(name) -> str:
+    """归一化字段名：仅保留字母数字并转大写，用于忽略大小写与下划线差异。"""
+    return re.sub(r"[^A-Za-z0-9]", "", str(name)).upper()
+
+
+def _known_official_fields(config: dict) -> set:
+    """汇总官方字段清单：required_fields + 各图层 field_lengths + field_map 候选名（归一化）。"""
+    known = set()
+    for layer_cfg in config.get("layers", {}).values():
+        known.update(_normalize_field_token(k) for k in layer_cfg.get("field_lengths", {}))
+        for candidates in layer_cfg.get("field_map", {}).values():
+            if isinstance(candidates, list):
+                known.update(_normalize_field_token(c) for c in candidates)
+            elif candidates is not None:
+                known.add(_normalize_field_token(candidates))
+    for fields in config.get("required_fields", {}).values():
+        known.update(_normalize_field_token(f) for f in fields)
+    return known
+
+
+def _suggest_standard_field(field: str, field_map: dict):
+    """尝试给出标准字段映射建议，返回 (标准键, 来源, 置信度)。"""
+    norm = _normalize_field_token(field)
+    best_std, best_source, best_score = None, None, 0.0
+
+    for std_field, candidates in field_map.items():
+        if candidates is None:
+            continue
+        cands = candidates if isinstance(candidates, list) else [candidates]
+        for cand in cands:
+            cand_norm = _normalize_field_token(cand)
+            if cand_norm == norm:
+                return std_field, "field_map_exact", 1.0
+            score = difflib.SequenceMatcher(None, norm, cand_norm).ratio()
+            if score >= 0.82 and max(len(norm), len(cand_norm)) >= 6 and score > best_score:
+                best_std, best_source, best_score = std_field, "field_map_fuzzy", score
+        std_norm = _normalize_field_token(std_field)
+        if std_norm == norm:
+            return std_field, "standard_key_exact", 1.0
+        score = difflib.SequenceMatcher(None, norm, std_norm).ratio()
+        if score >= 0.82 and max(len(norm), len(std_norm)) >= 6 and score > best_score:
+            best_std, best_source, best_score = std_field, "standard_key_fuzzy", score
+
+    if best_std is None:
+        return None, None, None
+    return best_std, best_source, round(best_score, 2)
+
+
+def suggest_unrecognized_field_mappings(proj: ProjectData) -> List[Dict]:
+    """收集未在 layer_mapping.yaml field_map 中定义的字段，并给出映射建议。"""
+    config = _load_layer_mapping_config()
+    layers_config = config.get("layers", {})
+    known_official = _known_official_fields(config)
+
+    results = []
+    for layer_name, feats in proj.layers.items():
+        if not feats:
+            continue
+        actual_fields = set(feats[0].properties.keys())
+
+        matched_config = None
+        for cfg_key in layers_config:
+            if cfg_key.upper() in layer_name.upper():
+                matched_config = layers_config[cfg_key]
+                break
+
+        if matched_config is None:
+            for f in sorted(actual_fields):
+                results.append({
+                    "layer": layer_name,
+                    "field": f,
+                    "suggested_standard_field": None,
+                    "suggestion_source": None,
+                    "suggestion_confidence": None,
+                    "known_official_field": _normalize_field_token(f) in known_official,
+                    "note": "图层未在 layer_mapping.yaml 中配置，无法给出映射建议",
+                })
+            continue
+
+        field_map = matched_config.get("field_map", {})
+        candidate_fields = set()
+        for candidates in field_map.values():
+            if candidates is None:
+                continue
+            if isinstance(candidates, list):
+                candidate_fields.update(candidates)
+            else:
+                candidate_fields.add(str(candidates))
+
+        for f in sorted(actual_fields):
+            if f in candidate_fields:
+                continue
+            std_field, source, confidence = _suggest_standard_field(f, field_map)
+            is_official = _normalize_field_token(f) in known_official
+            if is_official:
+                note = "官方字段清单或 field_lengths 已登记，但尚未加入 field_map；建议补充映射"
+            elif source:
+                note = "与 field_map 中候选字段相似，建议人工确认后补充映射"
+            else:
+                note = "未知字段，需人工确认是否保留或映射"
+            results.append({
+                "layer": layer_name,
+                "field": f,
+                "suggested_standard_field": std_field,
+                "suggestion_source": source,
+                "suggestion_confidence": confidence,
+                "known_official_field": is_official,
+                "note": note,
+            })
+
+    return results
+
 @app.post("/project/load", response_model=ApiResponse)
 async def load_project(file: UploadFile = File(...)):
     suffix = Path(file.filename).suffix
@@ -445,6 +567,18 @@ async def get_engineering_data(project_id: str):
         "objects": proj.get_engineering_data()["objects"],
     }
     return build_response(data=data)
+
+
+@app.get("/project/{project_id}/unrecognized-fields", response_model=ApiResponse)
+async def get_unrecognized_fields(project_id: str):
+    """返回未识别字段及映射建议，供适配/接入方补充 layer_mapping.yaml。"""
+    proj = get_project(project_id)
+    fields = suggest_unrecognized_field_mappings(proj)
+    return build_response(data={
+        "project_id": project_id,
+        "count": len(fields),
+        "unrecognized_fields": fields,
+    })
 
 @app.get("/project/{project_id}/device/{code}", response_model=ApiResponse)
 async def get_device(project_id: str, code: str):
