@@ -25,6 +25,7 @@ from design_parser.excel_reader import read_excel
 from design_parser.pdf_reader import extract_text_from_pdf
 from design_parser.package import ProjectPackage
 from design_parser.project_data import ProjectData
+from design_parser.rule_table_reader import find_rule_files, parse_rule_library
 from design_parser.bom_fiber_reader import (
     find_excel_files, find_gpkg_files, workbook_summary,
     read_sheet_rows, gpkg_summary, read_gpkg_rows,
@@ -388,6 +389,21 @@ async def get_table_data(project_id: str, file: str, sheet: Optional[str] = None
     if p.suffix.lower() == ".gpkg":
         return build_response(data=read_gpkg_rows(p, limit=limit))
     return build_response(data=read_sheet_rows(p, sheet=sheet, limit=limit))
+
+
+
+@app.get("/project/{project_id}/rule-library", response_model=ApiResponse)
+async def get_rule_library(project_id: str):
+    """返回官方规则库解析结果：校验规则 + 图层字段说明 + 可执行条件。"""
+    proj = get_project(project_id)
+    for root in _project_roots(proj):
+        files = find_rule_files(Path(root))
+        if files:
+            return build_response(data=parse_rule_library(files[0]))
+    return build_response(data={
+        "file": "", "validation_rules": [],
+        "field_specs": {}, "executable_rules": [],
+    })
 
 
 @app.get("/project/{project_id}/engineering-data", response_model=ApiResponse)

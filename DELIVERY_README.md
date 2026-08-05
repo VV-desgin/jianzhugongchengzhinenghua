@@ -42,6 +42,7 @@
 - 异常时返回结构化 errors，不输出未捕获 Traceback。
 - 新增 `engineering_data`：统一工程对象输出（{project_id, project_type, objects} ，objects 包含 cable/boite/ptech，字段覆盖 code/longueur/capacite/type/nb_fibre_util/hauteur_appui），供 BOM / 纤芯分配工作流使用；新增 `GET /project/{id}/engineering-data` 接口。
 - 新增 BOM/纤芯数据接口：`GET /project/{id}/bom-tables`、`GET /project/{id}/fiber-tables`、`GET /project/{id}/table-data`，支持解析 BOM_LIST/物料编码库/纤芯 TOPO 表格与 BOX/CABLE/SRO GPKG 层；`/agent/data-pipeline` 可传 `include_tables=true` 一并返回表格清单。
+- 新增 Excel 规则解析器：`GET /project/{id}/rule-library` 解析官方《图层表字段说明和数据校验规则.xlsx》，输出校验规则、字段说明与可执行条件（必填/唯一/空图层/坐标系/孤立性/几何检测/容量限制）。
 
 ### 修复点7：LLM 接口边界
 - LLM_API_URL/LLM_API_KEY/LLM_MODEL 从环境变量读取；缺少配置时 `/agent/orchestrate` 返回 502 "LLM 未配置"，不影响 `/agent/data-pipeline`、`/health` 和基础解析接口。

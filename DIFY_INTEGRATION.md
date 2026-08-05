@@ -73,6 +73,7 @@ curl -X POST http://127.0.0.1:8000/agent/data-pipeline \
 - `GET /project/{id}/bom-tables` — BOM 物料表清单（BOM_LIST.xlsx / material_code.xls 等）。
 - `GET /project/{id}/fiber-tables` — 纤芯数据清单（SRO-TOPO 纤芯表 + BOX/CABLE/SRO GPKG 矢量层）。
 - `GET /project/{id}/table-data?file=...&sheet=...&limit=100` — 读取指定表格/层数据。
+- `GET /project/{id}/rule-library` — 官方规则库解析（校验规则/字段说明/可执行条件），供智能审查工作流调用。
 - `POST /agent/data-pipeline` 可传 `include_tables=true`，回应额外包含 `bom_tables`/`fiber_tables`。
 - 流程建议：第一步上传拿 `project_id`，后续节点用上述接口取 BOM/纤芯数据。
 

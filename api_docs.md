@@ -66,7 +66,8 @@ python api.py
 - `GET /project/{id}/engineering-data` — 统一工程对象数据
 - `GET /project/{id}/bom-tables` — BOM 物料表清单（Excel，含前 50 行样例）
 - `GET /project/{id}/fiber-tables` — 纤芯数据清单（SRO-TOPO 纤芯表 + BOX/CABLE/SRO GPKG 矢量层）
-- `GET /project/{id}/table-data?file=xxx&sheet=yyy&limit=100` — 读取指定表格/层的数据（首行为表头），返回 {project_id, project_type, objects} ，objects 包含 cable/boite/ptech（字段覆盖 code/longueur/capacite/type/nb_fibre_util/hauteur_appui），供 BOM / 纤芯分配工作流使用
+- `GET /project/{id}/table-data?file=xxx&sheet=yyy&limit=100` — 读取指定表格/层的数据（首行为表头）
+- `GET /project/{id}/rule-library` — 解析官方规则库（校验规则 + 图层字段说明 + 可执行条件），返回 {project_id, project_type, objects} ，objects 包含 cable/boite/ptech（字段覆盖 code/longueur/capacite/type/nb_fibre_util/hauteur_appui），供 BOM / 纤芯分配工作流使用
 
 ### Agent 接口（支持文件上传或 file_url）
 
