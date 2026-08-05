@@ -798,6 +798,102 @@ class ProjectData:
                 return key
         return None
 
+    def get_relations(self, include_distances: bool = True) -> dict:
+        """上下游关系建模：CABLE.ORIGINE/EXTREMITE 引用 → 设备对象；BOITE/SITE 引用字段。
+
+        输出：
+        - objects_indexed: 参与关系建模的对象索引统计（按图层）
+        - cable_edges: 每条光缆的 upstream/downstream（含解析到的对象与距离，单位米）
+        - unresolved_refs: 引用到但未找到对象的编码（便于追溯数据问题）
+        - references: BOITE/SITE 的 REF_NRO/REF_PM/REF_PLAQUE/REF_SRO 引用
+        - distance_stats: 端点↔设备距离统计（用于空间阈值校准）
+        """
+        from .spatial_utils import point_distance_m
+        from shapely.geometry import Point
+
+        relation_layers = ("BOITE", "PTECH", "SITE", "IMB", "INFRASTRUCTURE", "ZNRO", "ZPM")
+
+        def is_relation_layer(upper):
+            if upper.startswith(("L_", "TYPE")):  # CSV ????l_xxx/Type xxx????????
+                return False
+            return any(upper == rl or upper.startswith(rl) for rl in relation_layers)
+        index = {}
+        indexed_count = {}
+        for key, feats in self.layers.items():
+            upper = key.upper()
+            if not is_relation_layer(upper):
+                continue
+            for feat in feats:
+                code = feat.properties.get("CODE") or feat.properties.get("code")
+                if code:
+                    index.setdefault(str(code), []).append({"layer": upper, "feature": feat})
+            indexed_count[upper] = len(feats)
+
+        def resolve(code):
+            matches = index.get(str(code))
+            return matches[0] if matches else None
+
+        def endpoint_pt(geom, first):
+            if geom is None or geom.geom_type != "LineString":
+                return None
+            coords = list(geom.coords)
+            return Point(coords[0] if first else coords[-1])
+
+        edges = []
+        unresolved = []
+        distances = []
+        cable_key = self._find_engineering_layer("CABLE")
+        for feat in self.layers.get(cable_key or "", []):
+            props = feat.properties or {}
+            up_code = props.get("ORIGINE") or props.get("START_CODE")
+            down_code = props.get("EXTREMITE") or props.get("END_CODE")
+            edge = {"cable_code": props.get("CODE") or props.get("code")}
+            for side, code in (("upstream", up_code), ("downstream", down_code)):
+                if not code:
+                    continue
+                target = resolve(code)
+                if target is None:
+                    unresolved.append({"cable_code": edge["cable_code"], "side": side, "code": str(code)})
+                    edge[side] = None
+                    continue
+                item = {"code": str(code), "layer": target["layer"]}
+                if include_distances:
+                    pt = endpoint_pt(feat._geometry, side == "upstream")
+                    tgeom = target["feature"]._geometry
+                    if pt is not None and tgeom is not None:
+                        if tgeom.geom_type != "Point" and hasattr(tgeom, "representative_point"):
+                            tgeom = tgeom.representative_point()
+                        d = point_distance_m(pt, tgeom, feat.original_crs)
+                        item["distance_m"] = round(d, 3)
+                        distances.append(d)
+                edge[side] = item
+            edges.append(edge)
+
+        references = []
+        for layer in ("BOITE", "SITE"):
+            lk = self._find_engineering_layer(layer)
+            for feat in self.layers.get(lk or "", []):
+                props = feat.properties or {}
+                code = props.get("CODE") or props.get("code")
+                refs = {k.lower(): props.get(k) for k in ("REF_NRO", "REF_PM", "REF_PLAQUE", "REF_SRO") if props.get(k)}
+                if refs:
+                    references.append({"layer": layer, "code": code, **refs})
+
+        stats = {"count": len(distances), "min_m": None, "median_m": None, "max_m": None}
+        if distances:
+            s = sorted(distances)
+            n = len(s)
+            median = s[n // 2] if n % 2 else (s[n // 2 - 1] + s[n // 2]) / 2
+            stats.update({"min_m": round(s[0], 3), "median_m": round(median, 3), "max_m": round(s[-1], 3)})
+
+        return {
+            "objects_indexed": indexed_count,
+            "cable_edges": edges,
+            "unresolved_refs": unresolved,
+            "references": references,
+            "distance_stats": stats,
+        }
+
     def get_unified_objects(self, layer_name: str):
         feats = self.layers.get(layer_name)
         if not feats:

@@ -17,6 +17,25 @@ def point_geodesic_distance(p1: Point, p2: Point) -> float:
     _, _, dist = _geod.inv(p1.x, p1.y, p2.x, p2.y)
     return dist
 
+def point_distance_m(p1: Point, p2: Point, crs: Optional[str] = None) -> float:
+    """?????????
+
+    ??????? EPSG:4326/4490????????
+    ??????? EPSG:26191??????????????
+    """
+    if crs:
+        try:
+            from pyproj import CRS
+            if CRS.from_user_input(crs).is_geographic:
+                return point_geodesic_distance(p1, p2)
+        except Exception:
+            pass
+    low = (crs or "").lower()
+    if any(k in low for k in ("4326", "4490", "wgs84", "cgcs2000", "geograph")):
+        return point_geodesic_distance(p1, p2)
+    return p1.distance(p2)
+
+
 def build_point_index(points: List[Tuple[str, Point]]):
     """根据设备点列表构建 STRtree 空间索引，返回索引和对应的 code 列表"""
     if not points:

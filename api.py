@@ -406,6 +406,15 @@ async def get_rule_library(project_id: str):
     })
 
 
+@app.get("/project/{project_id}/relations", response_model=ApiResponse)
+async def get_relations(project_id: str, include_distances: bool = True):
+    """上下游关系建模：CABLE.ORIGINE/EXTREMITE → 设备对象，BOITE/SITE 引用字段，端点距离统计。"""
+    proj = get_project(project_id)
+    data = proj.get_relations(include_distances=include_distances)
+    data["project_id"] = project_id
+    return build_response(data=data)
+
+
 @app.get("/project/{project_id}/engineering-data", response_model=ApiResponse)
 async def get_engineering_data(project_id: str):
     """返回统一工程对象数据（objects.cable/boite/ptech），供 BOM / 纤芯分配工作流使用。"""
@@ -1406,4 +1415,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
