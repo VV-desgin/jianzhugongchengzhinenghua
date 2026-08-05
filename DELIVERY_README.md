@@ -74,7 +74,7 @@ python api.py
 python -m pytest tests -q
 ```
 
-预期结果：11 passed。
+预期结果：42 passed（含 10 个标准测试案例的自动化验证：每个案例按预期命中规则校验）。
 
 ## 五、API 调用示例
 
