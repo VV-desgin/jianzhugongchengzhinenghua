@@ -1,6 +1,11 @@
-# design_parser V0.2 — Dify 接入前稳定化修复交付说明
+# design_parser V0.3 — Dify 接入前交付说明
 
 ## 一、本轮修改文件清单
+## 〇、V0.3 版本说明
+
+- 本版本在 V0.2 稳定化基础上完成：纤芯表真实表头自动识别（摘要带 headers）、R-FIBER-001 兼容真实 SRO TOPO（ODF 输入端口 / Entrée 输入纤芯查重）、CABLE_AMONT 长度口径方案 1 定稿（前缀 + 端口不计入，编号主体最长 17 ≤ 20，真实数据 0 误报）、文档与测试用例去除人名。
+- V0.2 交付包保留（design_parser_v0.2_delivery.zip），本包为 V0.3（design_parser_v0.3_delivery.zip）。
+
 
 | 文件 | 修复点 | 关键变更 |
 |------|--------|----------|

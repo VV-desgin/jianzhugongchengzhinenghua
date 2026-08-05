@@ -85,7 +85,7 @@ last_full_results: Dict[str, List[CheckResult]] = {}
 
 SERIOUS_SEVERITY_LEVELS = {"fatal"}
 
-app = FastAPI(title="通信设计审查 Agent 工具", version="3.1")
+app = FastAPI(title="通信设计审查 Agent 工具", version="0.3.0")
 
 app.add_middleware(
     CORSMiddleware,

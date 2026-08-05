@@ -41,7 +41,7 @@ class CustomBuildPy(build_py):
 
 setup(
     name="design_parser",
-    version="3.1.0",
+    version="0.3.0",
     description="通信建筑工程设计文件解析与审查 Agent",
     # fiona 仅提供 3.10~3.13 wheel；3.14+ 由 pyshp 纯 Python 回退，仍可运行
     python_requires=">=3.10,<3.15",

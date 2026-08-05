@@ -23,8 +23,9 @@ dist/
 wheels/
 python-3.12-embed.zip
 design_parser_v0.2_delivery.zip
+design_parser_v0.3_delivery.zip
 
-# 辅助脚本与开发记录（按 0.2 交付要求不入库，本地保留）
+# 辅助脚本与开发记录（按交付要求不入库，本地保留）
 auto_setup.py
 install.py
 /一键启动.bat
