@@ -3,7 +3,7 @@
 ## 〇、V0.3 版本说明
 
 - 本版本在 V0.2 稳定化基础上完成：
-  ① 按 Boss 要求补齐统一 engineering_data 输出（objects.cable/boite/ptech，字段覆盖 code/longueur/capacite/type/nb_fibre_util/hauteur_appui，新增 GET /project/{id}/engineering-data，/agent/data-pipeline 同步返回）；
+  ① 补齐统一 engineering_data 输出（objects.cable/boite/ptech，字段覆盖 code/longueur/capacite/type/nb_fibre_util/hauteur_appui，新增 GET /project/{id}/engineering-data，/agent/data-pipeline 同步返回）；
   ② 纤芯表真实表头自动识别（摘要带 headers，兼容 SRO TOPO 多级合并表头）；
   ③ R-FIBER-001 兼容真实 SRO TOPO（ODF 输入端口 / Entrée 输入纤芯查重）；
   ④ CABLE_AMONT 长度口径方案 1 定稿（前缀 + 端口不计入，编号主体最长 17 ≤ 20，真实数据 0 误报）。
