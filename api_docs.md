@@ -68,6 +68,7 @@ python api.py
 - `GET /project/{id}/fiber-tables` — 纤芯数据清单（SRO-TOPO 纤芯表 + BOX/CABLE/SRO GPKG 矢量层）
 - `GET /project/{id}/table-data?file=xxx&sheet=yyy&limit=100` — 读取指定表格/层的数据（首行为表头）
 - `GET /project/{id}/rule-library` — 解析官方规则库
+- `GET /project/{id}/procedure-kb?keyword=xxx` — 施工规程知识库检索（施工对象/工序/步骤/材料/工艺/测试/安全/验收/常见错误/来源）
 - `GET /project/{id}/relations?include_distances=true` — 上下游关系建模：CABLE.ORIGINE/EXTREMITE → 设备对象、BOITE/SITE 引用字段、端点距离统计（单位米）（校验规则 + 图层字段说明 + 可执行条件），返回 {project_id, project_type, objects} ，objects 包含 cable/boite/ptech（字段覆盖 code/longueur/capacite/type/nb_fibre_util/hauteur_appui），供 BOM / 纤芯分配工作流使用
 
 ### Agent 接口（支持文件上传或 file_url）

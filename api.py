@@ -415,6 +415,18 @@ async def get_relations(project_id: str, include_distances: bool = True):
     return build_response(data=data)
 
 
+@app.get("/project/{project_id}/procedure-kb", response_model=ApiResponse)
+async def get_procedure_kb(project_id: str, keyword: Optional[str] = None):
+    """规程知识库检索：返回《施工规程知识库.xlsx》结构化条目，可按关键词过滤。"""
+    from design_parser.procedure_reader import find_procedure_files, search_procedure_kb
+    proj = get_project(project_id)
+    for root in _project_roots(proj):
+        files = find_procedure_files(Path(root))
+        if files:
+            return build_response(data=search_procedure_kb(files[0], keyword or ""))
+    return build_response(data={"file": "", "entries": []})
+
+
 @app.get("/project/{project_id}/engineering-data", response_model=ApiResponse)
 async def get_engineering_data(project_id: str):
     """返回统一工程对象数据（objects.cable/boite/ptech），供 BOM / 纤芯分配工作流使用。"""
