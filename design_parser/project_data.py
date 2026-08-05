@@ -28,6 +28,34 @@ except ModuleNotFoundError as exc:
 import json
 import pandas as pd
 
+# BOM/??????????????????????????? + ?????
+ENGINEERING_OBJECTS = {
+    "cable": {
+        "code": ["CODE", "CABLE_CODE"],
+        "longueur": ["LONGUEUR", "LGR_REELLE", "LGR_CARTO"],
+        "capacite": ["CAPACITE", "CAPACITY", "FIBER_COUNT"],
+        "type": ["TYPE_CABLE", "TYPE"],
+        "nb_fibre_util": ["NB_FIBRE_U", "NB_FIBRE_UTIL", "NB_FIBRE_D", "fiber_count"],
+        "hauteur_appui": [],
+    },
+    "boite": {
+        "code": ["CODE", "BOITE_CODE", "ID"],
+        "longueur": [],
+        "capacite": ["CAPACITE", "CAPACITY"],
+        "type": ["TYPE", "TYPE_BOITE", "BOXTYPE", "TYPE_FONC", "FONCTION"],
+        "nb_fibre_util": ["NB_FIBRE_U", "NB_FIBRE_UTIL", "NBFUTILE"],
+        "hauteur_appui": ["HAUTEUR_AP", "HAUTEUR_APPUI", "HAUTEUR"],
+    },
+    "ptech": {
+        "code": ["CODE", "PTECH_CODE"],
+        "longueur": [],
+        "capacite": ["CAPACITE", "CAPACITY"],
+        "type": ["TYPE"],
+        "nb_fibre_util": ["NB_FIBRE_U", "NB_FIBRE_UTIL"],
+        "hauteur_appui": ["HAUTEUR_AP", "HAUTEUR_APPUI"],
+    },
+}
+
 
 class ProjectData:
     """工程设计文件解析核心：解压工程包 → 读取 QGS 工程 → 加载所有矢量/表格图层"""
@@ -729,6 +757,44 @@ class ProjectData:
                 "feature_count": len(feats),
             })
         return infos
+    def get_engineering_data(self) -> dict:
+        """?????????? BOM / ???????????
+
+        ???? objects.cable / objects.boite / objects.ptech?
+        ???? code?longueur?capacite?type?nb_fibre_util?hauteur_appui?
+        ????????????? None???????????
+        """
+        result = {"objects": {"cable": [], "boite": [], "ptech": []}}
+        for obj_key, field_map in ENGINEERING_OBJECTS.items():
+            layer_key = self._find_engineering_layer(obj_key.upper())
+            if layer_key is None:
+                continue
+            for feat in self.layers.get(layer_key, []):
+                props = feat.properties or {}
+                item = {}
+                for out_field, src_keys in field_map.items():
+                    value = None
+                    for k in src_keys:
+                        v = props.get(k)
+                        if v is not None and str(v).strip() != "":
+                            value = v
+                            break
+                    if out_field in ("longueur", "capacite", "nb_fibre_util", "hauteur_appui") and value is not None:
+                        try:
+                            num = float(value)
+                            value = int(num) if num.is_integer() else num
+                        except (TypeError, ValueError):
+                            pass
+                    item[out_field] = value
+                result["objects"][obj_key].append(item)
+        return result
+
+    def _find_engineering_layer(self, prefix: str) -> Optional[str]:
+        """?????????????? CABLE?BOITE?PTECH??"""
+        for key in self.layers:
+            if key.upper().startswith(prefix):
+                return key
+        return None
 
     def get_unified_objects(self, layer_name: str):
         feats = self.layers.get(layer_name)

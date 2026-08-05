@@ -324,6 +324,12 @@ async def get_layers(project_id: str):
     infos = proj.get_layer_info()
     return build_response(data=infos)
 
+@app.get("/project/{project_id}/engineering-data", response_model=ApiResponse)
+async def get_engineering_data(project_id: str):
+    """返回统一工程对象数据（objects.cable/boite/ptech），供 BOM / 纤芯分配工作流使用。"""
+    proj = get_project(project_id)
+    return build_response(data=proj.get_engineering_data())
+
 @app.get("/project/{project_id}/device/{code}", response_model=ApiResponse)
 async def get_device(project_id: str, code: str):
     proj = get_project(project_id)
@@ -767,6 +773,7 @@ async def data_pipeline(
         "serious_issues_detected": False,
         "excel_data": {},
         "pdf_text": {},
+        "engineering_data": {"objects": {"cable": [], "boite": [], "ptech": []}},
     }
 
     proj = None
@@ -791,6 +798,7 @@ async def data_pipeline(
             projects[project_id] = proj
             result["layers"] = proj.get_layer_info()
             logger.info(f"工程加载完成: {len(result['layers'])} 个图层")
+            result["engineering_data"] = proj.get_engineering_data()
             for _f in getattr(proj, "extract_failures", []):
                 result["warnings"].append(f"解压失败: {_f}")
         except Exception as e:

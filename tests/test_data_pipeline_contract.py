@@ -3,6 +3,7 @@
 REQUIRED_TOP_KEYS = [
     "success", "project_id", "project_name", "project_type",
     "layers", "summary", "review", "warnings", "errors",
+    "engineering_data",
 ]
 
 REQUIRED_LAYER_KEYS = ["name", "exists", "feature_count", "geometry_type", "source_layer_name"]
