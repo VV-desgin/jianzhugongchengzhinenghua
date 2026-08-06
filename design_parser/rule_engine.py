@@ -929,6 +929,11 @@ def check_distance_between(ctx: RuleContext, layer1: str = "", layer2: str = "",
 def check_layer_empty(ctx: RuleContext) -> List[CheckResult]:
     results = []
     for layer_name, features in ctx.layers.items():
+        # Skip reference tables and background layers (not engineering layers)
+        if layer_name.upper().startswith(("L_", "TYPE")):
+            continue
+        if not any(off.upper() in layer_name.upper() for off in OFFICIAL_LAYERS):
+            continue
         if len(features) == 0:
             results.append(CheckResult(
                 check_object=f"图层 {layer_name}",
@@ -1228,6 +1233,9 @@ def check_required_fields_exist(ctx: RuleContext) -> List[CheckResult]:
         return []
     results = []
     for layer_name, features in ctx.layers.items():
+        # Skip CSV reference tables — not standard engineering layers
+        if layer_name.upper().startswith(("L_", "TYPE")):
+            continue
         if not features:
             continue
         first_feat = features[0]
