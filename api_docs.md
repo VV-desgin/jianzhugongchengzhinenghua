@@ -82,6 +82,9 @@ python api.py
 
 - `success=true` 表示流水线执行成功，不代表工程无问题。
 - `review.issues[]` 每项固定包含 `rule_id`、`object_type`、`object_id`、`field`、`severity`、`message`、`source`。
+- `review.issues[]` 每项包含 `rule_id`、`object_type`、`object_id`、`object_ref`（可关联 `engineering_data.id`）、`field`、`severity`、`message`、`source`、`problem_category`（官方五大类 key）、`problem_category_label`（中文标签）。
+- `review.categories`：按官方五大问题分类（数据完整性/空间与安全/资源/逻辑一致性/工程合理性）汇总告警数。
+- R021 必填字段检查不作用于 CSV 参考表（l_/Type 前缀）；R016 空图层检查仅针对官方 8 个标准图层。
 - 异常时返回结构化 `errors`，不输出 Traceback。
 
 ```bash

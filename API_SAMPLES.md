@@ -135,6 +135,26 @@
 }
 ```
 
+## data-pipeline review.issues（新增字段示例）
+
+```json
+{
+  "rule_id": "R019",
+  "object_type": "光缆 CDI-JAD-MAR-01-0001",
+  "object_id": "字段 CAPACITE",
+  "object_ref": "cable:CDI-JAD-MAR-01-0001",
+  "field": "",
+  "severity": "warning",
+  "message": "光缆容量 (24) 超过终点设备 PBO-JAD-MAR-0001 容量 (12)",
+  "source": "rule_engine",
+  "problem_category": "resource",
+  "problem_category_label": "资源"
+}
+```
+
+> 说明：`object_ref` 与 `engineering_data.id` 同源（如 `cable:CDI-JAD-MAR-01-0001`），用于赛道三→四对象编码追踪；`problem_category` 对齐组委会官方五大问题分类。
+
+
 ## rule-library
 
 ```json

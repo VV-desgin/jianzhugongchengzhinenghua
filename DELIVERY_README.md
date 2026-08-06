@@ -24,6 +24,9 @@
 | `design_parser/bom_fiber_reader.py` | 纤芯解析 | 自动识别真实表头行（兼容 SRO TOPO 多级合并表头），摘要输出 headers |
 | `design_parser/case_checks.py` | 纤芯审查 | R-FIBER-001 兼容真实 SRO TOPO（ODF 输入端口、Entrée 输入纤芯重复检查） |
 | `design_parser/rule_engine.py` | 纤芯审查 | 纤芯页签筛选增加 SRO/BPE/PBO 设备页 |
+| `design_parser/problem_categories.py` | 问题分类 | 官方五大问题分类映射（review.issues.problem_category 来源） |
+| `tools/gen_evaluation_report.py` | 评测 | 生成 EVALUATION_REPORT.md（规则覆盖率/案例准确率/对象贯穿/稳定性） |
+| `EVALUATION_REPORT.md` | 评测 | 评测报告：覆盖率 100%（含部分）/92.3%（完整），案例准确率 100%，对象贯穿 89.9% |
 | `design_parser/mappings/length_rules.json` | 字段长度 | CABLE_AMONT 方案1（前缀+端口不计入，编号主体最长 17 ≤ 20，真实数据 0 误报） |
 | `tests/` | 回归 | 新增 4 项纤芯/表头测试，全量 pytest 93 passed |
 | `API_SAMPLES.md` | 文档 | bom/fiber 示例同步为最新返回结构（sheets 含 headers/rows） |
@@ -54,6 +57,7 @@
 ### 修复点6：固定 /agent/data-pipeline 输出契约
 - 固定字段：success、project_id、project_name、project_type、layers、summary、review、warnings、errors（并保留旧字段兼容）。
 - `success=true` 仅表示流水线执行成功，不代表工程无问题；`review.issues` 每项固定包含 rule_id、object_type、object_id、field、severity、message、source。
+- `review.issues` 新增 `problem_category`（官方五大问题分类：数据完整性/空间与安全/资源/逻辑一致性/工程合理性）、`problem_category_label`、`object_ref`（关联 `engineering_data.id`，如 `cable:CDI-...`）；`review.categories` 按五大类汇总告警数。
 - 异常时返回结构化 errors，不输出未捕获 Traceback。
 - 新增 `engineering_data`：统一工程对象输出（{project_id, project_type, objects}，objects 包含 cable/boite/ptech/site/infrastructure，每项含唯一 id，字段覆盖 code/longueur/capacite/type/nb_fibre_util/hauteur_appui），供 BOM / 纤芯分配工作流使用；新增 `GET /project/{id}/engineering-data` 接口。
 - 新增 `POST /agent/inspect-file` 单文件识别；`/table-data` 支持 filter/page/page_size；错误响应统一为 {success:false, data:null, error:{code,message}}；`/device/{code}` 支持 crs 参数坐标转换；解析结果按文件+修改时间缓存。
@@ -70,6 +74,10 @@
 - LLM_API_URL/LLM_API_KEY/LLM_MODEL 从环境变量读取；缺少配置时 `/agent/orchestrate` 返回 502 "LLM 未配置"，不影响 `/agent/data-pipeline`、`/health` 和基础解析接口。
 
 ### 修复点8：纤芯表解析与审查增强
+### 修复点9：审查严谨性（R021/R016 误报修复）
+- R021 必填字段检查不再作用于 CSV 参考表图层（`l_`/`Type` 前缀，如 l_cable_type、Type boite.csv）——参考表不属于官方 8 个标准图层，无必填字段规范依据，赛题误报 133→0。
+- R016 空图层检查仅针对官方 8 个标准图层（OFFICIAL_LAYERS），不再把 OpenStreetMap 等背景图/参考表误报为空图层。
+- 赛题一/赛题四总告警 362→228，剩余告警均为真实业务问题（容量/覆盖/坐标系/编码/拓扑），可复现、可追溯。
 - 表头自动识别：`read_sheet_rows`/`workbook_summary` 自动定位真实表头行（兼容 SRO TOPO 前几行元信息 + 多级合并表头），摘要新增 `headers` 字段，下游无需再调接口猜列名。
 - R-FIBER-001 兼容真实纤芯拓扑表：SRO 页按 SRO Port/ODF Code/ODF Port 检查输入端口重复，单箱页按 Entrée/N°/T/F 检查输入纤芯重复；规则引擎自动纳入 SRO/BPE/PBO 设备页签。
 - 真实数据验证：赛题一 SRO TOPO 共 120 个设备页签被扫描，SRO 页 721 行 ODF 端口无重复，无漏扫、无误报。

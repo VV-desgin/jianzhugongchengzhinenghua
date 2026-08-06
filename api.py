@@ -33,6 +33,7 @@ from design_parser.bom_fiber_reader import (
 )
 from design_parser.rule_engine import ALL_RULES, RuleContext
 from design_parser.check_result import CheckResult
+from design_parser.problem_categories import CATEGORY_LABELS, problem_category_for
 from schemas import (
     ApiResponse,
     CheckResultOut,
@@ -1169,22 +1170,50 @@ async def data_pipeline(
                 total_rules = len(all_results)
                 passed_rules = sum(1 for r in all_results if r.passed)
                 failed_rules = total_rules - passed_rules
+                eng_objects = (result.get("engineering_data") or {}).get("objects") or {}
+                code_lookup = {}
+                for obj_key, items in eng_objects.items():
+                    for item in items:
+                        code = item.get("code")
+                        if code:
+                            code_lookup[str(code).upper()] = item.get("id") or f"{obj_key}:{code}"
+                codes_sorted = sorted(code_lookup.keys(), key=len, reverse=True)
                 issues = []
                 for r in all_results:
                     if not r.passed:
+                        obj_ref = ""
+                        if codes_sorted:
+                            haystack = " ".join(str(x or "") for x in (r.check_object, r.error_description)).upper()
+                            for code in codes_sorted:
+                                if code in haystack:
+                                    obj_ref = code_lookup[code]
+                                    break
+                        cat_key = problem_category_for(r.rule_id)
                         issues.append({
                             "rule_id": r.rule_id,
                             "object_type": r.check_object,
                             "object_id": r.problem_location or "",
+                            "object_ref": obj_ref,
                             "field": "",
                             "severity": r.severity or "warning",
                             "message": r.error_description or "",
                             "source": "rule_engine",
+                            "problem_category": cat_key,
+                            "problem_category_label": CATEGORY_LABELS.get(cat_key, cat_key),
                         })
+                categories = {}
+                for iss in issues:
+                    key = iss["problem_category"]
+                    entry = categories.get(key)
+                    if entry is None:
+                        entry = {"label": iss["problem_category_label"], "count": 0}
+                        categories[key] = entry
+                    entry["count"] += 1
                 result["review"] = {
                     "total_rules": total_rules,
                     "passed_rules": passed_rules,
                     "failed_rules": failed_rules,
+                    "categories": categories,
                     "issues": issues,
                 }
 
