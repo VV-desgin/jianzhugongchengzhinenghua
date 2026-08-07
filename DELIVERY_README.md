@@ -1,12 +1,12 @@
 # design_parser V0.3 — Dify 接入前交付说明
 
-## V0.3 版本说明
+## 〇、V0.3 版本说明
 
 - 本版本在 V0.2 稳定化基础上完成：
-  ① 补齐统一 engineering_data 输出（objects.cable/boite/ptech，字段覆盖 code/longueur/capacite/type/nb_fibre_util/hauteur_appui，新增 GET /project/{id}/engineering-data，/agent/data-pipeline 同步返回）；
+  ① 按 Boss 要求补齐统一 engineering_data 输出（objects.cable/boite/ptech，字段覆盖 code/longueur/capacite/type/nb_fibre_util/hauteur_appui，新增 GET /project/{id}/engineering-data，/agent/data-pipeline 同步返回）；
   ② 纤芯表真实表头自动识别（摘要带 headers，兼容 SRO TOPO 多级合并表头）；
   ③ R-FIBER-001 兼容真实 SRO TOPO（ODF 输入端口 / Entrée 输入纤芯查重）；
-  ④ CABLE_AMONT 长度口径方案 1 定稿（前缀 + 端口不计入，编号主体最长 17 ≤ 20，真实数据 0 误报）。
+  ④ CABLE_AMONT 官方口径 Longueur=30 已确认（2026-08-08）：按全串校验（含前缀与 -NNN），赛题真实数据最长 29 ≤ 30，>30 判超长。
 - V0.2 交付包保留（design_parser_v0.2_delivery.zip），本包为 V0.3（design_parser_v0.3_delivery.zip）。
 
 ## 一、本轮修改文件清单
@@ -27,7 +27,7 @@
 | `design_parser/problem_categories.py` | 问题分类 | 官方五大问题分类映射（review.issues.problem_category 来源） |
 | `tools/gen_evaluation_report.py` | 评测 | 生成 EVALUATION_REPORT.md（规则覆盖率/案例准确率/对象贯穿/稳定性） |
 | `EVALUATION_REPORT.md` | 评测 | 评测报告：覆盖率 100%（含部分）/92.3%（完整），案例准确率 100%，对象贯穿 89.9% |
-| `design_parser/mappings/length_rules.json` | 字段长度 | CABLE_AMONT 方案1（前缀+端口不计入，编号主体最长 17 ≤ 20，真实数据 0 误报） |
+| `design_parser/mappings/length_rules.json` | 字段长度 | CABLE_AMONT Longueur=30 全串校验（真实数据最长 29 全通过，>30 判超长） |
 | `tests/` | 回归 | 新增 4 项纤芯/表头测试，全量 pytest 93 passed |
 | `API_SAMPLES.md` | 文档 | bom/fiber 示例同步为最新返回结构（sheets 含 headers/rows） |
 
@@ -62,7 +62,7 @@
 - 新增 `engineering_data`：统一工程对象输出（{project_id, project_type, objects}，objects 包含 cable/boite/ptech/site/infrastructure，每项含唯一 id，字段覆盖 code/longueur/capacite/type/nb_fibre_util/hauteur_appui），供 BOM / 纤芯分配工作流使用；新增 `GET /project/{id}/engineering-data` 接口。
 - 新增 `POST /agent/inspect-file` 单文件识别；`/table-data` 支持 filter/page/page_size；错误响应统一为 {success:false, data:null, error:{code,message}}；`/device/{code}` 支持 crs 参数坐标转换；解析结果按文件+修改时间缓存。
 - 新增 `API_SAMPLES.md`：10 个新接口的真实返回 JSON 样例（由赛题一/赛题四数据生成）。
-- 新增 `design_parser/mappings/length_rules.json`：R032 字段长度检查可配置。CABLE_AMONT 采用方案1（已确认）：自动识别两段式前缀与末尾 -NNN（纤芯号/端口号）不计入，编号主体最长 17 位 ≤ 官方 20，两套赛题实测 0 误报；官方若改全串口径，`enabled:false` 一键恢复。
+- 新增 `design_parser/mappings/length_rules.json`：R032 字段长度检查可配置。CABLE_AMONT 官方口径 Longueur=30（2026-08-08 确认，与 CABLE.CODE 对齐）：按全串校验（含前缀与末尾 -NNN），两套赛题实测全串最长 29 ≤ 30 全通过，>30 判超长；配置 max_len/prefix_mode/strip_increment 可一键切换口径。
 - 新增 BOM/纤芯数据接口：`GET /project/{id}/bom-tables`、`GET /project/{id}/fiber-tables`、`GET /project/{id}/table-data`，支持解析 BOM_LIST/物料编码库/纤芯 TOPO 表格与 BOX/CABLE/SRO GPKG 层；`/agent/data-pipeline` 可传 `include_tables=true` 一并返回表格清单。
 - 新增 Excel 规则解析器：`GET /project/{id}/rule-library` 解析官方《图层表字段说明和数据校验规则.xlsx》，输出校验规则、字段说明与可执行条件（含字段类型/长度，共约 400 条）。
 - 新增上下游关系建模：`GET /project/{id}/relations` 返回 CABLE 端点→设备对象边、未解析引用、BOITE/SITE 引用字段、端点距离统计（单位米）。

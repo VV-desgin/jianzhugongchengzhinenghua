@@ -1,12 +1,7 @@
-"""CABLE_AMONT 长度检查临时口径测试（length_rules.json 配置驱动）。
+"""CABLE_AMONT 长度检查测试（length_rules.json 配置驱动）。
 
-官方确认前按团队暂定口径：固定前缀（<类型>-<运营商>-）与末尾 -NNN（Increment）
-不计入长度，仅设备标识部分计（<=20）。官方确认后通过配置一键切换。
-"""
-"""CABLE_AMONT 长度检查临时口径测试（length_rules.json 配置驱动）。
-
-末尾 -NNN（Increment）已确认是光缆内部纤芯号/端口号，不计入编号长度；
-固定前缀（<类型>-<运营商>-）暂不计入，仅编号主体计（<=20）。最终计法待数据方确认，可通过配置一键切换。
+官方口径已确认（2026-08-08）：CABLE_AMONT（上游/入箱光缆编号）Longueur 设为 30，
+按全串校验（含固定前缀与末尾 -NNN 纤芯号/端口号），>30 判超长。
 """
 
 from pathlib import Path
@@ -21,6 +16,7 @@ from design_parser.rule_table_reader import parse_rule_library
 
 
 def _make_rules_xlsx(path: Path):
+    """构造官方规则库（Longueur 仍写 20，用于验证 length_rules.json 的 max_len=30 覆盖生效）。"""
     wb = Workbook()
     ws = wb.active
     ws.title = "校验规则"
@@ -54,39 +50,40 @@ def _stub_proj(layers, rule_xlsx):
     return p
 
 
-def test_effective_length_text_provisional():
-    # 全串 29 -> 剥前缀 8 + 剥 -NNN 4 = 基础 17
-    assert _effective_length_text("CABLE_AMONT", "CDI-UNF-EJA01-MRJ01-TDI01-001") == "EJA01-MRJ01-TDI01"
-    # CTR 系列：剥 CTR-INWI- 8 + -001 4 = EJA01
-    assert _effective_length_text("CABLE_AMON", "CTR-INWI-EJA01-001") == "EJA01"
-    # 无 -NNN：只剥前缀
-    assert _effective_length_text("CABLE_AMONT", "CDI-UNF-EJA01-MRJ02-TDI03") == "EJA01-MRJ02-TDI03"
+def test_effective_length_text_full_string():
+    # 全串口径：前缀与 -NNN 均计入长度，不剥离
+    assert _effective_length_text("CABLE_AMONT", "CDI-UNF-EJA01-MRJ01-TDI01-001") == "CDI-UNF-EJA01-MRJ01-TDI01-001"
+    assert _effective_length_text("CABLE_AMON", "CTR-INWI-EJA01-001") == "CTR-INWI-EJA01-001"
+    assert _effective_length_text("CABLE_AMONT", "CDI-UNF-EJA01-MRJ02-TDI03") == "CDI-UNF-EJA01-MRJ02-TDI03"
     # 非配置字段不受影响
     assert _effective_length_text("NOM", "CDI-UNF-EJA01-MRJ01-TDI01-001") == "CDI-UNF-EJA01-MRJ01-TDI01-001"
 
 
-def test_cable_amont_provisional_not_flagged(tmp_path):
+def test_cable_amont_full_string_not_flagged(tmp_path):
+    """真实数据全串 18/25/29 位均 <=30，即使官方 xlsx 写 20 也不误报（max_len 覆盖生效）。"""
     xlsx = tmp_path / "图层表字段说明和数据校验规则.xlsx"
     _make_rules_xlsx(xlsx)
     proj = _stub_proj({
         "BOITE": [
-            _feat(0, {"CODE": "BPE-001", "CABLE_AMON": "CDI-UNF-EJA01-MRJ01-TDI01-001"}),
-            _feat(1, {"CODE": "BPE-002", "CABLE_AMON": "CTR-INWI-EJA01-001"}),
+            _feat(0, {"CODE": "BPE-001", "CABLE_AMON": "CDI-UNF-EJA01-MRJ01-TDI01-001"}),  # 29
+            _feat(1, {"CODE": "BPE-002", "CABLE_AMON": "CTR-INWI-EJA01-001"}),              # 18
+            _feat(2, {"CODE": "BPE-003", "CABLE_AMON": "CDI-UNF-EJA01-MRJ02-TDI03"}),       # 25
         ],
     }, xlsx)
     ctx = RuleContext(proj)
     results = check_field_length(ctx)
-    assert results == [], f"临时口径下不应报超长: {[r.error_description for r in results]}"
+    assert results == [], f"30 位全串口径下不应报超长: {[r.error_description for r in results]}"
 
 
-def test_cable_amont_base_over_limit_still_flagged(tmp_path):
+def test_cable_amont_over_30_flagged(tmp_path):
+    """全串长度 >30 仍应报 R032 超长。"""
     xlsx = tmp_path / "图层表字段说明和数据校验规则.xlsx"
     _make_rules_xlsx(xlsx)
     proj = _stub_proj({
         "BOITE": [
-            _feat(0, {"CODE": "BPE-003", "CABLE_AMON": "CDI-UNF-EJA01-MRJ01-TDI01-SUPERLONGSEG"}),
+            _feat(0, {"CODE": "BPE-004", "CABLE_AMON": "CDI-UNF-EJA01-MRJ01-TDI01-001-EXTRA"}),  # 35
         ],
     }, xlsx)
     ctx = RuleContext(proj)
     results = check_field_length(ctx)
-    assert any(r.rule_id == "R032" for r in results), "基础码超 20 仍应报超长"
+    assert any(r.rule_id == "R032" for r in results), "全串超过 30 应报超长"

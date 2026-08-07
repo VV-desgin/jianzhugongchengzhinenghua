@@ -64,7 +64,7 @@ layers:
       FABRIQUANT: 50
       REF_BPE: 50
       NB_CASSETT: 10
-      CABLE_AMON: 29
+      CABLE_AMON: 30
       STATUT: 50
       PROPRIETAI: 50
       GESTIONNAI: 50

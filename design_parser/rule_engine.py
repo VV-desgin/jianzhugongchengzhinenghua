@@ -1916,6 +1916,26 @@ def _effective_length_text(field, value):
     return text
 
 
+def _override_max_len(field: str, fallback: int) -> int:
+    """length_rules.json 配置的 max_len/limit 覆盖 YAML 与官方规格长度（如 CABLE_AMONT=30）。"""
+    cfg = _load_length_rules()
+    if not cfg.get("enabled"):
+        return fallback
+    for key, rule in cfg.get("rules", {}).items():
+        if field.upper() == key.upper() or field[:10].upper() == key[:10].upper():
+            rule = rule or {}
+            override = rule.get("max_len")
+            if override is None:
+                override = rule.get("limit")
+            if override is not None:
+                try:
+                    return int(override)
+                except (TypeError, ValueError):
+                    return fallback
+            break
+    return fallback
+
+
 def check_field_length(ctx: RuleContext) -> List[CheckResult]:
     """R032: 字段长度检查 = YAML 配置最大长度 + 官方字段说明 Longueur champ。"""
     results = []
@@ -1943,6 +1963,7 @@ def check_field_length(ctx: RuleContext) -> List[CheckResult]:
                     value = feat.properties.get(field)
                     if _is_missing_sentinel(value):
                         continue
+                    max_len = _override_max_len(field, max_len)
                     text = _effective_length_text(field, value)
                     if len(text) > max_len:
                         results.append(CheckResult(
@@ -1976,6 +1997,7 @@ def check_field_length(ctx: RuleContext) -> List[CheckResult]:
                         continue
                     if (layer_name, feat.feature_id, field.upper()) in flagged:
                         continue
+                    max_len = _override_max_len(field, max_len)
                     text = _effective_length_text(field, value)
                     if len(text) > max_len:
                         results.append(CheckResult(

@@ -2,10 +2,10 @@
   "enabled": true,
   "rules": {
     "CABLE_AMONT": {
-      "limit": 20,
-      "prefix_mode": "auto",
-      "strip_increment": true,
-      "note": "临时口径（Increment 语义已确认）：<类型>-<运营商>-（如 CDI-UNF-，8 位）为固定前缀不计入；末尾 -NNN（Increment）已确认为光缆内部纤芯号/端口号，不计入编号长度；仅编号主体计长度（实际最长 17 ≤ 20）。官方字段语义为“上游/入箱光缆编号”；待数据方最终确认 20 的计法：若 20 为全串硬上限，将 enabled 设为 false 即可恢复全串校验。"
+      "max_len": 30,
+      "prefix_mode": "off",
+      "strip_increment": false,
+      "note": "官方口径已确认（Boss/数据方，2026-08-08）：CABLE_AMONT（上游/入箱光缆编号）字段 Longueur 设为 30（与 CABLE.CODE 对齐），按全串校验（含固定前缀与末尾 -NNN 纤芯号/端口号）。赛题一/四实测全串最长 29 ≤ 30，全部通过；>30 判超长。"
     }
   }
 }
