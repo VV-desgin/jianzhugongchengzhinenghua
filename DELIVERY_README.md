@@ -102,6 +102,15 @@ python api.py
 
 服务启动后监听 `http://0.0.0.0:8000`。
 
+Linux（Debian/Ubuntu）启动：
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python3 api.py
+```
+> Linux 上无 `python` 命令时请使用 `python3`；RAR 解压需要系统 unrar：`sudo apt install unrar`。
+
 ## 四、测试命令
 
 ```powershell

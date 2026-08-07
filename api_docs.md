@@ -9,7 +9,7 @@ pip install -r requirements.txt
 python api.py
 ```
 
-支持 Python 3.10 ~ 3.14（3.14 自动使用 pyshp 读取 SHP）。启动后监听 `http://0.0.0.0:8000`。
+支持 Python 3.10 ~ 3.14（3.14 自动使用 pyshp 读取 SHP）。启动后监听 `http://0.0.0.0:8000`。 Linux 环境使用 python3 api.py 启动；RAR 解压需安装系统 unrar（sudo apt install unrar）。
 
 ## 二、接口列表
 

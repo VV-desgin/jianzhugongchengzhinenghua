@@ -47,7 +47,9 @@ def _configure_unrar_path():
     """
     # 优先用 PATH 中已有的 unrar
     unrar_path = shutil.which('unrar') or shutil.which('UnRAR')
-    if not unrar_path:
+    candidates = []
+    if not unrar_path and os.name == 'nt':
+        # Windows: 回退到打包内置 bin/UnRAR.exe 与常见安装路径
         project_root = Path(__file__).parent.parent  # design_parser/ -> project root
         candidates = [
             str(project_root / 'bin' / 'UnRAR.exe'),       # 打包内置 (bin/UnRAR.exe)
@@ -69,7 +71,10 @@ def _configure_unrar_path():
             pass
         logger.info(f"unrar 工具路径: {unrar_path}")
     else:
-        logger.error("无法找到 UnRAR.exe，RAR 解压将不可用。请确认交付包内 bin/UnRAR.exe 存在（已检查: " + "; ".join(candidates) + "）")
+        if os.name == 'nt':
+            logger.error("无法找到 UnRAR.exe，RAR 解压将不可用。请确认交付包内 bin/UnRAR.exe 存在（已检查: " + "; ".join(candidates) + "）")
+        else:
+            logger.error("无法找到 unrar，RAR 解压将不可用。Linux 请执行: sudo apt install unrar（或 unrar-free / unar）")
 
 
 def _suppress_winrar_popup():
