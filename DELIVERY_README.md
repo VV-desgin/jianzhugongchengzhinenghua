@@ -59,6 +59,7 @@
 - `success=true` 仅表示流水线执行成功，不代表工程无问题；`review.issues` 每项固定包含 rule_id、object_type、object_id、field、severity、message、source。
 - `review.issues` 新增 `problem_category`（官方五大问题分类：数据完整性/空间与安全/资源/逻辑一致性/工程合理性）、`problem_category_label`、`object_ref`（关联 `engineering_data.id`，如 `cable:CDI-...`）；`review.categories` 按五大类汇总告警数。
 - 异常时返回结构化 errors，不输出未捕获 Traceback。
+- 纯 Excel 工程包适配器：含官方图层 Sheet 的 xlsx/xls 可直接进入主总控（inspect 识别、字段别名统一、行转 engineering_data.objects），无坐标时执行非空间规则（字段/CODE/关系/容量）并跳过 GIS 空间规则（返回 review_scope=non_spatial 与 skipped_gis_rules）。
 - 新增 `engineering_data`：统一工程对象输出（{project_id, project_type, objects}，objects 包含 cable/boite/ptech/site/infrastructure，每项含唯一 id，字段覆盖 code/longueur/capacite/type/nb_fibre_util/hauteur_appui），供 BOM / 纤芯分配工作流使用；新增 `GET /project/{id}/engineering-data` 接口。
 - 新增 `POST /agent/inspect-file` 单文件识别；`/table-data` 支持 filter/page/page_size；错误响应统一为 {success:false, data:null, error:{code,message}}；`/device/{code}` 支持 crs 参数坐标转换；解析结果按文件+修改时间缓存。
 - 新增 `API_SAMPLES.md`：10 个新接口的真实返回 JSON 样例（由赛题一/赛题四数据生成）。

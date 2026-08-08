@@ -80,6 +80,10 @@ RULE_ROUTING = {
         "R010","R011","R013","R014","R015","R016","R017","R018","R032",
         "R019","R020","R021","R022","R023","R-FIBER-001"
     ],
+    "Excel 工程包": [
+        "R005","R005_4","R007","R008","R009",
+        "R011","R012","R016","R018","R019","R020","R021","R022","R032","R033","R-FIBER-001"
+    ],
 }
 
 projects: Dict[str, ProjectData] = {}
@@ -203,6 +207,7 @@ def inspect_file(file_path: str, original_filename: str) -> dict:
     files_inside = None
     missing_shp = None
     warnings = []
+    excel_official = False
 
     if is_archive:
         archive_type = suffix.lstrip('.')
@@ -230,6 +235,14 @@ def inspect_file(file_path: str, original_filename: str) -> dict:
                     })
             if not missing_shp:
                 missing_shp = None
+            try:
+                from design_parser.excel_adapter import excel_has_official_sheets
+                for f in pkg.temp_dir.rglob("*"):
+                    if f.is_file() and f.suffix.lower() in (".xlsx", ".xls") and excel_has_official_sheets(f):
+                        excel_official = True
+                        break
+            except Exception:
+                pass
             pkg.cleanup()
         except Exception as e:
             files_inside = [f"解压失败: {e}"]
@@ -243,8 +256,19 @@ def inspect_file(file_path: str, original_filename: str) -> dict:
         inside_str = " ".join(files_inside).upper()
         if any(ext in inside_str for ext in [".QGS", ".QGZ", ".SHP", ".GPKG"]):
             can_parse = True
+        elif excel_official:
+            can_parse = True
     elif original_filename.lower().endswith(('.shp', '.gpkg', '.qgs')):
         can_parse = True
+    elif original_filename.lower().endswith(('.xlsx', '.xls')):
+        try:
+            from design_parser.excel_adapter import excel_has_official_sheets
+            excel_official = excel_has_official_sheets(Path(file_path))
+            can_parse = excel_official
+        except Exception:
+            can_parse = False
+    if excel_official:
+        category = "Excel 工程包"
 
     return {
         "file_name": original_filename,
@@ -1040,6 +1064,7 @@ PROJECT_TYPE_MAP = {
     "竣工图": "as_built",
     "竣工图（含BOM）": "as_built",
     "设计图（含纤芯）": "full_design",
+    "Excel 工程包": "full_design",
     "QGIS工程": "unknown",
     "未知文件": "unknown",
 }
@@ -1136,6 +1161,10 @@ async def data_pipeline(
                 "project_type": getattr(proj, "project_type", "unknown"),
                 "objects": proj.get_engineering_data()["objects"],
             }
+            if getattr(proj, "is_excel_project", False):
+                result["review_scope"] = "non_spatial"
+                result["skipped_gis_rules"] = ["R-GIS-001~006", "R-SAFE-001~009", "R010", "R013", "R014", "R015", "R017", "R023", "R025", "R026", "R027", "R028"]
+                result["warnings"].append("纯 Excel 工程包：无空间坐标，GIS 空间规则已跳过")
             if include_tables:
                 bom_files, fiber_wb, fiber_vec = [], [], []
                 for root in _project_roots(proj):

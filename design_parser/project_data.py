@@ -83,6 +83,7 @@ class ProjectData:
         self.extract_failures = list(outer_pkg.extract_failures)
         # 官方规则库缓存（首次访问时解析，无规则表时为空字典）
         self._rule_library = None
+        self.qgs = None
 
         qgs_files = list(outer_pkg.temp_dir.rglob('*.qgs'))
 
@@ -103,7 +104,18 @@ class ProjectData:
             self.has_qgis = False
             self.layers = {}
             self.package = self.inner_package if self.inner_package else self.outer_package
-            logger.info("未发现 QGIS 工程文件，按普通文件包处理")
+            self.is_excel_project = False
+            try:
+                from .excel_adapter import build_excel_layers
+                excel_layers = build_excel_layers(self.outer_package.temp_dir)
+                if excel_layers:
+                    self.layers = excel_layers
+                    self.is_excel_project = True
+                    logger.info(f"Excel 工程包识别: {len(excel_layers)} 个图层（非空间）")
+            except Exception as e:
+                logger.warning(f"Excel 工程包识别失败: {e}")
+            if not self.layers:
+                logger.info("未发现 QGIS 工程文件，按普通文件包处理")
             return
 
         if len(qgs_files) > 1:
