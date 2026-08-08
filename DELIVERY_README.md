@@ -109,7 +109,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 python3 api.py
 ```
-> Linux 上无 `python` 命令时请使用 `python3`；RAR 解压需要系统 unrar：`sudo apt install unrar`。
+> Linux 上无 `python` 命令时请使用 `python3`；RAR 解压优先使用系统 unrar（`sudo apt install unrar`），未安装且联网时程序会自动下载 RARLAB 官方 unrar 到 `bin/`。
 
 ## 四、测试命令
 

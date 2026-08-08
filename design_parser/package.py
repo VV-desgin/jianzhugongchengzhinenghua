@@ -38,6 +38,59 @@ def _ensure_rar_ready():
     _RAR_INITIALIZED = True
 
 
+_UNRAR_LINUX_URL = "https://www.rarlab.com/rar/rarlinux-x64-723.tar.gz"
+_UNRAR_DOWNLOAD_TIMEOUT = 60
+
+
+def _auto_download_unrar() -> Optional[str]:
+    """Linux 无系统 unrar 时自动下载 RARLAB 官方 unrar 到 bin/（Windows 使用打包内置 UnRAR.exe）。"""
+    project_root = Path(__file__).parent.parent
+    bin_dir = project_root / "bin"
+    try:
+        bin_dir.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        return None
+    if os.name == "nt":
+        target = bin_dir / "UnRAR.exe"
+        return str(target) if target.exists() else None
+    target = bin_dir / "unrar"
+    if target.exists() and os.access(target, os.X_OK):
+        return str(target)
+    import tarfile
+    import urllib.request
+    tmp_path = None
+    try:
+        logger.info(f"Linux 未检测到 unrar，自动下载官方 RARLAB unrar（{_UNRAR_LINUX_URL}）...")
+        with urllib.request.urlopen(_UNRAR_LINUX_URL, timeout=_UNRAR_DOWNLOAD_TIMEOUT) as resp:
+            data = resp.read()
+        tmp_path = Path(tempfile.gettempdir()) / "rarlinux-x64.tar.gz"
+        tmp_path.write_bytes(data)
+        with tarfile.open(tmp_path, "r:gz") as tf:
+            member = None
+            for m in tf.getmembers():
+                if m.name == "unrar" or m.name.endswith("/unrar"):
+                    member = m
+                    break
+            if member is None:
+                raise RuntimeError("官方包中未找到 unrar 二进制")
+            extracted = tf.extractfile(member)
+            if extracted is None:
+                raise RuntimeError("unrar 二进制读取失败")
+            target.write_bytes(extracted.read())
+        target.chmod(0o755)
+        logger.info(f"unrar 自动下载完成: {target}")
+        return str(target)
+    except Exception as e:
+        logger.warning(f"unrar 自动下载失败（可手动 sudo apt install unrar）: {e}")
+        return None
+    finally:
+        try:
+            if tmp_path is not None and tmp_path.exists():
+                tmp_path.unlink()
+        except Exception:
+            pass
+
+
 def _configure_unrar_path():
     """配置 unrar 工具的完整路径。
 
@@ -47,6 +100,9 @@ def _configure_unrar_path():
     """
     # 优先用 PATH 中已有的 unrar
     unrar_path = shutil.which('unrar') or shutil.which('UnRAR')
+    if not unrar_path and os.name != 'nt':
+        # Linux：PATH 无 unrar 时自动下载官方 RARLAB unrar 到 bin/
+        unrar_path = _auto_download_unrar()
     candidates = []
     if not unrar_path and os.name == 'nt':
         # Windows: 回退到打包内置 bin/UnRAR.exe 与常见安装路径
