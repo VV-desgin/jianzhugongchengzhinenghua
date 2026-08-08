@@ -9,6 +9,7 @@ import json
 import re
 import difflib
 import asyncio
+import time
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict, Optional, List
@@ -128,6 +129,31 @@ def get_project(project_id: str) -> ProjectData:
     if not proj:
         raise HTTPException(status_code=404, detail="项目不存在或已过期")
     return proj
+
+
+_PROJECT_TTL_SECONDS = 2 * 60 * 60  # 项目数据保留 2 小时，超时后清理临时文件
+
+
+def _store_project(project_id: str, proj) -> None:
+    """保存项目并记录创建时间；顺带清理过期项目，防止临时文件无限堆积。"""
+    try:
+        proj._created_at = time.time()
+    except Exception:
+        pass
+    projects[project_id] = proj
+    now = time.time()
+    for pid in [
+        k for k, v in list(projects.items())
+        if now - getattr(v, "_created_at", now) > _PROJECT_TTL_SECONDS
+    ]:
+        old = projects.pop(pid, None)
+        if old is not None:
+            try:
+                old.cleanup()
+            except Exception:
+                pass
+            logger.info(f"清理过期项目: {pid}")
+
 
 def build_response(data=None, success=True, error=None):
     return ApiResponse(success=success, data=data, error=error).model_dump()
@@ -476,7 +502,7 @@ async def load_project(file: UploadFile = File(...)):
         tmp.close()
         proj_id = str(uuid.uuid4())[:8]
         proj = ProjectData(tmp.name)
-        projects[proj_id] = proj
+        _store_project(proj_id, proj)
         return build_response(data={"project_id": proj_id})
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"解析失败: {e}")
@@ -762,7 +788,7 @@ async def full_pipeline(
 
         proj = ProjectData(archive_path)
         project_id = str(uuid.uuid4())[:8]
-        projects[project_id] = proj
+        _store_project(project_id, proj)
 
         review_results = proj.run_all_rules()
         last_full_results[project_id] = review_results
@@ -962,7 +988,7 @@ async def auto_review(
 
         proj = ProjectData(archive_path)
         project_id = str(uuid.uuid4())[:8]
-        projects[project_id] = proj
+        _store_project(project_id, proj)
 
         rule_ids = RULE_ROUTING.get(file_info["file_category"], [])
         review_results = []
@@ -1102,7 +1128,7 @@ async def data_pipeline(
         try:
             proj = ProjectData(archive_path)
             proj.project_type = result.get("project_type", "unknown")
-            projects[project_id] = proj
+            _store_project(project_id, proj)
             result["layers"] = proj.get_layer_info()
             logger.info(f"工程加载完成: {len(result['layers'])} 个图层")
             result["engineering_data"] = {
@@ -1125,7 +1151,7 @@ async def data_pipeline(
             for _f in getattr(proj, "extract_failures", []):
                 result["warnings"].append(f"解压失败: {_f}")
         except Exception as e:
-            logger.warning(f"工程数据加载失败: {e}")
+            logger.exception(f"工程数据加载失败: {e}")
             result["status"] = "project_load_failed"
             result["errors"].append(f"工程数据加载失败: {e}")
             return result
@@ -1262,7 +1288,6 @@ async def data_pipeline(
                 except Exception as e:
                     pdf_text[fp.name] = f"提取失败: {e}"
             result["pdf_text"] = pdf_text
-            pkg.cleanup()
         except Exception as e:
             logger.warning(f"PDF 文本提取失败: {e}")
             result["pdf_text"] = {"error": str(e)}
@@ -1289,11 +1314,8 @@ async def data_pipeline(
         result["errors"].append(str(e))
     finally:
         Path(archive_path).unlink(missing_ok=True)
-        if proj is not None:
-            try:
-                proj.cleanup()
-            except Exception:
-                pass
+        # 保留解压文件供 project_id 后续接口（bom/fiber/table-data 等）取数；
+        # 过期项目由 _store_project 的 TTL 清理临时文件，避免无限堆积。
 
     return result
 
@@ -1340,7 +1362,7 @@ async def orchestrate(
 
         proj = ProjectData(archive_path)
         project_id = str(uuid.uuid4())[:8]
-        projects[project_id] = proj
+        _store_project(project_id, proj)
 
         has_geodata = getattr(proj, 'has_qgis', False)
 

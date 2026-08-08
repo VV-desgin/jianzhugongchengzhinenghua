@@ -64,6 +64,8 @@
 - 新增 `API_SAMPLES.md`：10 个新接口的真实返回 JSON 样例（由赛题一/赛题四数据生成）。
 - 新增 `design_parser/mappings/length_rules.json`：R032 字段长度检查可配置。CABLE_AMONT 官方口径 Longueur=30（2026-08-08 确认，与 CABLE.CODE 对齐）：按全串校验（含前缀与末尾 -NNN），两套赛题实测全串最长 29 ≤ 30 全通过，>30 判超长；配置 max_len/prefix_mode/strip_increment 可一键切换口径。
 - 新增 BOM/纤芯数据接口：`GET /project/{id}/bom-tables`、`GET /project/{id}/fiber-tables`、`GET /project/{id}/table-data`，支持解析 BOM_LIST/物料编码库/纤芯 TOPO 表格与 BOX/CABLE/SRO GPKG 层；`/agent/data-pipeline` 可传 `include_tables=true` 一并返回表格清单。
+- 大数据量优化：Excel 读取改为流式单遍扫描（BOM_LIST 104 万行过滤/翻页内存安全，实测过滤全表扫描约 6s）；	able-data 按（文件+参数+修改时间）缓存，重复请求不重扫；workbook_summary 单次打开工作簿遍历全部页签。
+- 工程文件生命周期：data-pipeline 返回的 project_id 保留解压文件供 bom/fiber/table-data 等后续接口取数（不再即时删除），过期项目由 TTL（2 小时）自动清理临时文件。
 - 新增 Excel 规则解析器：`GET /project/{id}/rule-library` 解析官方《图层表字段说明和数据校验规则.xlsx》，输出校验规则、字段说明与可执行条件（含字段类型/长度，共约 400 条）。
 - 新增上下游关系建模：`GET /project/{id}/relations` 返回 CABLE 端点→设备对象边、未解析引用、BOITE/SITE 引用字段、端点距离统计（单位米）。
 - 新增 GIS 空间审查：`GET /project/{id}/gis-check`（R-GIS-001~006，端点容差 0.5m）。

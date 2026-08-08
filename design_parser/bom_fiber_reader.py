@@ -8,7 +8,8 @@
 约定：
 - 表格统一输出 {"file", "kind", "sheets": [{"name", "row_count", "rows"}]}
 - 行数据统一输出 {"file", "sheet", "headers", "rows"}，首行为表头；
-- 超大表（如 BOM_LIST 104 万行）只读取前 limit 行，避免内存与响应膨胀。
+- 超大表（如 BOM_LIST 104 万行）只读取前 limit 行，避免内存与响应膨胀；
+- 过滤/翻页按流式单遍扫描，内存只保留当前页行，不随全表增长。
 """
 import os
 from pathlib import Path
@@ -19,10 +20,11 @@ FIBER_KEYWORDS = ("fiber", "fibre", "topo", "splice", "纤芯", "接续", "分�
                   "上游", "下游", "upstream", "downstream")
 EXCEL_EXTS = (".xlsx", ".xls")
 _FILE_CACHE: Dict[str, tuple] = {}
+_CACHE_MAX = 256
 
 
 def _cached_file(path: Path, key: str, builder):
-    """按（路径+键+修改时间）缓存解析结果，文件变动后自动重算。"""
+    """按（路径+键+修改时间）缓存解析结果，文件变动后自动重算；容量超限时淘汰最旧条目。"""
     try:
         mtime = path.stat().st_mtime
     except OSError:
@@ -33,8 +35,10 @@ def _cached_file(path: Path, key: str, builder):
         return hit
     result = builder()
     _FILE_CACHE[ck] = result
+    if len(_FILE_CACHE) > _CACHE_MAX:
+        for stale in list(_FILE_CACHE)[: _CACHE_MAX // 2]:
+            _FILE_CACHE.pop(stale, None)
     return result
-
 
 
 DEFAULT_ROW_LIMIT = 100
@@ -127,16 +131,49 @@ def list_sheet_names(path: Path) -> List[str]:
 
 
 def workbook_summary(path: Path, row_limit: int = DEFAULT_ROW_LIMIT) -> Dict[str, Any]:
-    """返回 Excel 工作簿摘要（缓存：按文件+修改时间）。"""
+    """返回 Excel 工作簿摘要（缓存：按文件+修改时间；单次打开工作簿遍历全部页签）。"""
     def build():
         suffix = path.suffix.lower()
-        sheets = _xlsx_sheets(path) if suffix == ".xlsx" else _xls_sheets(path)
-        for s in sheets:
-            data = read_sheet_rows(path, sheet=s["name"], limit=row_limit)
-            s["rows"] = data["rows"]
-            s["headers"] = data["headers"]
+        sheets: List[Dict[str, Any]] = []
+        if suffix == ".xlsx":
+            from openpyxl import load_workbook
+            wb = load_workbook(path, read_only=True, data_only=True)
+            try:
+                for ws in wb.worksheets:
+                    raw_rows: List[list] = []
+                    for row in ws.iter_rows(values_only=True):
+                        raw_rows.append([_to_serializable(c) for c in row])
+                        if len(raw_rows) >= HEADER_SCAN_ROWS + row_limit:
+                            break
+                    header_idx = _detect_header_index(raw_rows)
+                    sheets.append({
+                        "name": ws.title,
+                        "row_count": ws.max_row or 0,
+                        "rows": raw_rows[header_idx + 1:][:row_limit],
+                        "headers": raw_rows[header_idx] if raw_rows else [],
+                    })
+            finally:
+                wb.close()
+        else:
+            import xlrd
+            wb = xlrd.open_workbook(str(path))
+            for sh in wb.sheets():
+                raw_rows = []
+                for r_idx in range(sh.nrows):
+                    raw_rows.append([_to_serializable(sh.cell_value(r_idx, c)) for c in range(sh.ncols)])
+                    if len(raw_rows) >= HEADER_SCAN_ROWS + row_limit:
+                        break
+                header_idx = _detect_header_index(raw_rows)
+                sheets.append({
+                    "name": sh.name,
+                    "row_count": sh.nrows,
+                    "rows": raw_rows[header_idx + 1:][:row_limit],
+                    "headers": raw_rows[header_idx] if raw_rows else [],
+                })
         return {"file": path.name, "kind": classify_table(path.name), "sheets": sheets}
     return _cached_file(path, f"summary:{row_limit}", build)
+
+
 def read_sheet_rows(path: Path, sheet: Optional[str] = None,
                     limit: int = DEFAULT_ROW_LIMIT, filter: Optional[str] = None,
                     page: int = 1, page_size: Optional[int] = None) -> Dict[str, Any]:
@@ -144,46 +181,76 @@ def read_sheet_rows(path: Path, sheet: Optional[str] = None,
 
     支持：
     - limit/（page+page_size）分页；默认页大小为 limit（上限 1000）；
-    - filter：字段值包含关键字（忽畧大小写）。
-    注意：使用 filter 时会全表扫描（大表可能较慢）。
+    - filter：字段值包含关键字（忽略大小写）。
+    大数据量优化：流式单遍扫描，内存只保留当前页行；filter/翻页时才全表扫描，
+    但不再把整张表构建为列表（BOM_LIST 104 万行场景内存安全）。
+    结果按（文件+参数+修改时间）缓存，重复请求不重扫。
     """
     page = max(1, int(page))
     page_size = max(1, min(int(page_size if page_size is not None else limit), 1000))
     suffix = path.suffix.lower()
-    raw_rows: List[list] = []
-    if suffix == ".xlsx":
-        from openpyxl import load_workbook
-        wb = load_workbook(path, read_only=True, data_only=True)
-        try:
-            ws = next((w for w in wb.worksheets if w.title == sheet), wb.worksheets[0])
-            sheet_name = ws.title
-            for row in ws.iter_rows(values_only=True):
-                raw_rows.append([_to_serializable(c) for c in row])
-                if not filter and page == 1 and len(raw_rows) >= HEADER_SCAN_ROWS + page_size:
-                    break
-        finally:
-            wb.close()
-    else:
-        import xlrd
-        wb = xlrd.open_workbook(str(path))
-        sh = next((s for s in wb.sheets() if s.name == sheet), wb.sheets()[0])
-        sheet_name = sh.name
-        for r_idx in range(sh.nrows):
-            raw_rows.append([_to_serializable(sh.cell_value(r_idx, c)) for c in range(sh.ncols)])
-            if not filter and page == 1 and len(raw_rows) >= HEADER_SCAN_ROWS + page_size:
-                break
-    header_idx = _detect_header_index(raw_rows)
-    headers = raw_rows[header_idx] if raw_rows else []
-    all_rows = raw_rows[header_idx + 1:]
-    if filter:
-        kw = filter.strip().lower()
-        all_rows = [r for r in all_rows if any(kw in str(v).lower() for v in r if v is not None)]
-    total = len(all_rows)
+    kw = filter.strip().lower() if filter else None
     start_idx = (page - 1) * page_size
-    rows = all_rows[start_idx:start_idx + page_size]
-    return {"file": path.name, "kind": classify_table(path.name),
-            "sheet": sheet_name, "headers": headers, "rows": rows,
-            "total": total, "page": page, "page_size": page_size}
+    key = f"rows:{sheet}:{limit}:{filter}:{page}:{page_size}"
+
+    def build() -> Dict[str, Any]:
+        header_rows: List[list] = []
+        header_idx = 0
+        headers: list = []
+        scan_done = False
+        total = 0
+        page_rows: List[list] = []
+        sheet_name = sheet or ""
+
+        def feed(row: list) -> bool:
+            """处理一行：返回 True 表示可以提前结束。"""
+            nonlocal header_idx, scan_done, total
+            if not scan_done:
+                header_rows.append(row)
+                if len(header_rows) >= HEADER_SCAN_ROWS:
+                    header_idx = _detect_header_index(header_rows)
+                    headers[:] = header_rows[header_idx]
+                    scan_done = True
+                    for extra in header_rows[header_idx + 1:]:
+                        if feed(extra):
+                            return True
+                return False
+            if kw is not None:
+                if not any(kw in str(v).lower() for v in row if v is not None):
+                    return False
+            total += 1
+            if total > start_idx and len(page_rows) < page_size:
+                page_rows.append(row)
+            if kw is None and page == 1 and len(page_rows) >= page_size:
+                return True
+            return False
+
+        if suffix == ".xlsx":
+            from openpyxl import load_workbook
+            wb = load_workbook(path, read_only=True, data_only=True)
+            try:
+                ws = next((w for w in wb.worksheets if w.title == sheet), wb.worksheets[0])
+                sheet_name = ws.title
+                for row in ws.iter_rows(values_only=True):
+                    if feed([_to_serializable(c) for c in row]):
+                        break
+            finally:
+                wb.close()
+        else:
+            import xlrd
+            wb = xlrd.open_workbook(str(path))
+            sh = next((s for s in wb.sheets() if s.name == sheet), wb.sheets()[0])
+            sheet_name = sh.name
+            for r_idx in range(sh.nrows):
+                cells = [_to_serializable(sh.cell_value(r_idx, c)) for c in range(sh.ncols)]
+                if feed(cells):
+                    break
+        return {"file": path.name, "kind": classify_table(path.name),
+                "sheet": sheet_name, "headers": headers, "rows": page_rows,
+                "total": total, "page": page, "page_size": page_size}
+
+    return _cached_file(path, key, build)
+
 
 def gpkg_summary(path: Path) -> Dict[str, Any]:
     """返回 GPKG 矢量图层摘要：图层名、要素数、字段清单、前 DEFAULT_ROW_LIMIT 行。"""
