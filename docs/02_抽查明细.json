@@ -1,0 +1,242 @@
+[
+  {
+    "rule_id": "R019",
+    "object_type": "光缆 CDI-JAD-MAR-01-0001",
+    "object_id": "终点设备 PBO-JAD-MAR-0001",
+    "message": "光缆容量 (24) 超过终点设备 PBO-JAD-MAR-0001 容量 (12)",
+    "category": "正确检出",
+    "note": "光缆容量与设备容量字段真实不匹配"
+  },
+  {
+    "rule_id": "R019",
+    "object_type": "光缆 CDI-JAD-MAR-01-0002",
+    "object_id": "起点设备 PBO-JAD-MAR-0001",
+    "message": "光缆容量 (24) 超过起点设备 PBO-JAD-MAR-0001 容量 (12)",
+    "category": "正确检出",
+    "note": "光缆容量与设备容量字段真实不匹配"
+  },
+  {
+    "rule_id": "R019",
+    "object_type": "光缆 CDI-JAD-MAR-01-0002",
+    "object_id": "终点设备 PBO-JAD-MAR-0002",
+    "message": "光缆容量 (24) 超过终点设备 PBO-JAD-MAR-0002 容量 (12)",
+    "category": "正确检出",
+    "note": "光缆容量与设备容量字段真实不匹配"
+  },
+  {
+    "rule_id": "R019",
+    "object_type": "光缆 CDI-JAD-MAR-01-0003",
+    "object_id": "终点设备 PBO-JAD-MAR-0003",
+    "message": "光缆容量 (24) 超过终点设备 PBO-JAD-MAR-0003 容量 (12)",
+    "category": "正确检出",
+    "note": "光缆容量与设备容量字段真实不匹配"
+  },
+  {
+    "rule_id": "R019",
+    "object_type": "光缆 CDI-JAD-MAR-01-0004",
+    "object_id": "起点设备 PBO-JAD-MAR-0003",
+    "message": "光缆容量 (24) 超过起点设备 PBO-JAD-MAR-0003 容量 (12)",
+    "category": "正确检出",
+    "note": "光缆容量与设备容量字段真实不匹配"
+  },
+  {
+    "rule_id": "R019",
+    "object_type": "光缆 CDI-JAD-MAR-01-0004",
+    "object_id": "终点设备 PBO-JAD-MAR-0004",
+    "message": "光缆容量 (24) 超过终点设备 PBO-JAD-MAR-0004 容量 (12)",
+    "category": "正确检出",
+    "note": "光缆容量与设备容量字段真实不匹配"
+  },
+  {
+    "rule_id": "R019",
+    "object_type": "光缆 CDI-JAD-MAR-01-0005",
+    "object_id": "终点设备 PBO-JAD-MAR-0005",
+    "message": "光缆容量 (24) 超过终点设备 PBO-JAD-MAR-0005 容量 (12)",
+    "category": "正确检出",
+    "note": "光缆容量与设备容量字段真实不匹配"
+  },
+  {
+    "rule_id": "R019",
+    "object_type": "光缆 CDI-JAD-MAR-01-0006",
+    "object_id": "起点设备 PBO-JAD-MAR-0005",
+    "message": "光缆容量 (24) 超过起点设备 PBO-JAD-MAR-0005 容量 (12)",
+    "category": "正确检出",
+    "note": "光缆容量与设备容量字段真实不匹配"
+  },
+  {
+    "rule_id": "R019",
+    "object_type": "光缆 CDI-JAD-MAR-01-0006",
+    "object_id": "终点设备 PBO-JAD-MAR-0006",
+    "message": "光缆容量 (24) 超过终点设备 PBO-JAD-MAR-0006 容量 (12)",
+    "category": "正确检出",
+    "note": "光缆容量与设备容量字段真实不匹配"
+  },
+  {
+    "rule_id": "R019",
+    "object_type": "光缆 CDI-JAD-MAR-01-0007",
+    "object_id": "终点设备 PBO-JAD-MAR-0007",
+    "message": "光缆容量 (24) 超过终点设备 PBO-JAD-MAR-0007 容量 (12)",
+    "category": "正确检出",
+    "note": "光缆容量与设备容量字段真实不匹配"
+  },
+  {
+    "rule_id": "R019",
+    "object_type": "光缆 CDI-JAD-MAR-01-0008",
+    "object_id": "起点设备 PBO-JAD-MAR-0007",
+    "message": "光缆容量 (24) 超过起点设备 PBO-JAD-MAR-0007 容量 (12)",
+    "category": "正确检出",
+    "note": "光缆容量与设备容量字段真实不匹配"
+  },
+  {
+    "rule_id": "R019",
+    "object_type": "光缆 CDI-JAD-MAR-01-0008",
+    "object_id": "终点设备 PBO-JAD-MAR-0008",
+    "message": "光缆容量 (24) 超过终点设备 PBO-JAD-MAR-0008 容量 (12)",
+    "category": "正确检出",
+    "note": "光缆容量与设备容量字段真实不匹配"
+  },
+  {
+    "rule_id": "R019",
+    "object_type": "光缆 CDI-JAD-MAR-01-0009",
+    "object_id": "终点设备 PBO-JAD-MAR-0009",
+    "message": "光缆容量 (24) 超过终点设备 PBO-JAD-MAR-0009 容量 (12)",
+    "category": "正确检出",
+    "note": "光缆容量与设备容量字段真实不匹配"
+  },
+  {
+    "rule_id": "R019",
+    "object_type": "光缆 CDI-JAD-MAR-01-0010",
+    "object_id": "起点设备 PBO-JAD-MAR-0009",
+    "message": "光缆容量 (24) 超过起点设备 PBO-JAD-MAR-0009 容量 (12)",
+    "category": "正确检出",
+    "note": "光缆容量与设备容量字段真实不匹配"
+  },
+  {
+    "rule_id": "R019",
+    "object_type": "光缆 CDI-JAD-MAR-01-0010",
+    "object_id": "终点设备 PBO-JAD-MAR-0010",
+    "message": "光缆容量 (24) 超过终点设备 PBO-JAD-MAR-0010 容量 (12)",
+    "category": "正确检出",
+    "note": "光缆容量与设备容量字段真实不匹配"
+  },
+  {
+    "rule_id": "R019",
+    "object_type": "光缆 CDI-JAD-MAR-01-0011",
+    "object_id": "终点设备 PBO-JAD-MAR-0011",
+    "message": "光缆容量 (24) 超过终点设备 PBO-JAD-MAR-0011 容量 (12)",
+    "category": "正确检出",
+    "note": "光缆容量与设备容量字段真实不匹配"
+  },
+  {
+    "rule_id": "R022",
+    "object_type": "设备 PBO-JAD-MAR-0001",
+    "object_id": "容量覆盖检查",
+    "message": "PBO 容量 (12) 小于覆盖建筑户数 (20)",
+    "category": "正确检出",
+    "note": "PBO 容量小于覆盖户数，属规划容量问题"
+  },
+  {
+    "rule_id": "R022",
+    "object_type": "设备 PBO-JAD-MAR-0003",
+    "object_id": "容量覆盖检查",
+    "message": "PBO 容量 (12) 小于覆盖建筑户数 (22)",
+    "category": "正确检出",
+    "note": "PBO 容量小于覆盖户数，属规划容量问题"
+  },
+  {
+    "rule_id": "R022",
+    "object_type": "设备 PBO-JAD-MAR-0005",
+    "object_id": "容量覆盖检查",
+    "message": "PBO 容量 (12) 小于覆盖建筑户数 (22)",
+    "category": "正确检出",
+    "note": "PBO 容量小于覆盖户数，属规划容量问题"
+  },
+  {
+    "rule_id": "R022",
+    "object_type": "设备 PBO-JAD-MAR-0007",
+    "object_id": "容量覆盖检查",
+    "message": "PBO 容量 (12) 小于覆盖建筑户数 (20)",
+    "category": "正确检出",
+    "note": "PBO 容量小于覆盖户数，属规划容量问题"
+  },
+  {
+    "rule_id": "R022",
+    "object_type": "设备 PBO-JAD-MAR-0009",
+    "object_id": "容量覆盖检查",
+    "message": "PBO 容量 (12) 小于覆盖建筑户数 (18)",
+    "category": "正确检出",
+    "note": "PBO 容量小于覆盖户数，属规划容量问题"
+  },
+  {
+    "rule_id": "R022",
+    "object_type": "设备 PBO-JAD-MAR-0011",
+    "object_id": "容量覆盖检查",
+    "message": "PBO 容量 (12) 小于覆盖建筑户数 (20)",
+    "category": "正确检出",
+    "note": "PBO 容量小于覆盖户数，属规划容量问题"
+  },
+  {
+    "rule_id": "R017",
+    "object_type": "图层 BOITE",
+    "object_id": "坐标系",
+    "message": "图层 'BOITE' 的坐标系为 epsg:4326，与目标 EPSG:4490 不一致",
+    "category": "疑似",
+    "note": "图层元信息仍为 4326，几何已自动重投影到 4490；是否跳过已重投影图层待确认"
+  },
+  {
+    "rule_id": "R017",
+    "object_type": "图层 CABLE",
+    "object_id": "坐标系",
+    "message": "图层 'CABLE' 的坐标系为 epsg:4326，与目标 EPSG:4490 不一致",
+    "category": "疑似",
+    "note": "图层元信息仍为 4326，几何已自动重投影到 4490；是否跳过已重投影图层待确认"
+  },
+  {
+    "rule_id": "R017",
+    "object_type": "图层 IMB",
+    "object_id": "坐标系",
+    "message": "图层 'IMB' 的坐标系为 epsg:4326，与目标 EPSG:4490 不一致",
+    "category": "疑似",
+    "note": "图层元信息仍为 4326，几何已自动重投影到 4490；是否跳过已重投影图层待确认"
+  },
+  {
+    "rule_id": "R007",
+    "object_type": "设备代码 JAD-MAR1076",
+    "object_id": "CODE",
+    "message": "设备代码重复，涉及对象ID: None, None",
+    "category": "正确检出",
+    "note": "同图层 CODE 重复"
+  },
+  {
+    "rule_id": "R005_4",
+    "object_type": "BOITE BPE-JAD-MAR-1003",
+    "object_id": "CABLE 端点",
+    "message": "BOITE BPE-JAD-MAR-1003 未被任何 CABLE(DISTRIBUTION) 的 ORIGINE 或 EXTREMITE 引用",
+    "category": "正确检出",
+    "note": "BOITE 未被任何 CABLE 端点引用"
+  },
+  {
+    "rule_id": "R014",
+    "object_type": "光缆 CDI-JAD-MAR-01-0025 与 CDI-JAD-MAR-01-1010",
+    "object_id": "交叉点",
+    "message": "光缆 CDI-JAD-MAR-01-0025 和 CDI-JAD-MAR-01-1010 发生非端点交叉",
+    "category": "正确检出",
+    "note": "光缆几何非端点交叉"
+  },
+  {
+    "rule_id": "R020",
+    "object_type": "设备 PBO-JAD-MAR-0054",
+    "object_id": "容量检查",
+    "message": "PBO 已用纤芯 (14) 超过容量 (12)",
+    "category": "正确检出",
+    "note": "已用纤芯数超过容量"
+  },
+  {
+    "rule_id": "R023",
+    "object_type": "光缆 CTR-JAD-MAR-01-1033 的起点",
+    "object_id": "孤立端点",
+    "message": "光缆 CTR-JAD-MAR-01-1033 的起点孤立，与最近光缆 CDI-JAD-MAR-01-0031 端点距离 174.6m 超过阈值 100.0m",
+    "category": "正确检出",
+    "note": "端点距最近光缆超过 100m 阈值（阈值属规则口径）"
+  }
+]
