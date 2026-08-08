@@ -1,4 +1,4 @@
-"""任务单要求：test_recursive_file_scan —— 递归发现嵌套目录内 SHP 配套文件，且不误报缺失。"""
+"""验收要求：test_recursive_file_scan —— 递归发现嵌套目录内 SHP 配套文件，且不误报缺失。"""
 
 REQUIRED_FILES = {
     "IMB": {"shp", "shx", "dbf", "prj"},

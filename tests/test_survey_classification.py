@@ -1,4 +1,4 @@
-"""任务单要求：test_survey_classification —— 官方场勘包识别为 survey_design。"""
+"""验收要求：test_survey_classification —— 官方场勘包识别为 survey_design。"""
 
 
 def test_survey_classification(client, upload_survey):

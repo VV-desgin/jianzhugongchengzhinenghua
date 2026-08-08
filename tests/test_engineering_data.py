@@ -1,6 +1,6 @@
 """engineering_data 统一工程对象输出测试（供 BOM / 纤芯分配工作流使用）。
 
-对外格式与 boss 约定一致：
+对外格式与需求方约定一致：
 {
   "project_id": "...",
   "project_type": "...",
@@ -55,7 +55,7 @@ def test_engineering_data_empty_layers_structure():
 
 
 def test_engineering_data_in_pipeline(client, upload_survey):
-    """/agent/data-pipeline 响应包含 engineering_data（boss 格式：project_id/project_type/objects）。"""
+    """/agent/data-pipeline 响应包含 engineering_data（约定格式：project_id/project_type/objects）。"""
     resp = upload_survey()
     assert resp.status_code == 200
     data = resp.json()
@@ -72,7 +72,7 @@ def test_engineering_data_in_pipeline(client, upload_survey):
 
 
 def test_engineering_data_endpoint(client, upload_survey):
-    """GET /project/{id}/engineering-data 返回同一 boss 格式。"""
+    """GET /project/{id}/engineering-data 返回同一 约定格式。"""
     resp = upload_survey()
     pid = resp.json()["project_id"]
     r2 = client.get(f"/project/{pid}/engineering-data")

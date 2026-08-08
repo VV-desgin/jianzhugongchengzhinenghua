@@ -1,4 +1,4 @@
-"""任务单要求补充测试：fiona 缺失（如 Python 3.14）时 pyshp 纯 Python 回退可正常读取官方 SHP。"""
+"""验收要求补充测试：fiona 缺失（如 Python 3.14）时 pyshp 纯 Python 回退可正常读取官方 SHP。"""
 import zipfile
 from pathlib import Path
 

@@ -1,4 +1,4 @@
-"""任务单要求：test_layer_alias_mapping —— INFRA/INFRASTRUCTURE 等别名统一为标准名。"""
+"""验收要求：test_layer_alias_mapping —— INFRA/INFRASTRUCTURE 等别名统一为标准名。"""
 
 STANDARD_LAYERS = ["IMB", "SITE", "BOITE", "CABLE", "PTECH", "INFRASTRUCTURE", "ZNRO", "ZPM"]
 

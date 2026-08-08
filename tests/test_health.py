@@ -1,4 +1,4 @@
-"""任务单要求：test_health —— 启动后 /health 返回 200 和固定 JSON。"""
+"""验收要求：test_health —— 启动后 /health 返回 200 和固定 JSON。"""
 
 
 def test_health(client):

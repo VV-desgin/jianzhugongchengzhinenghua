@@ -1,4 +1,4 @@
-"""任务单要求：test_empty_layers_preserved —— 空图层必须存在于 layers 返回值中。"""
+"""验收要求：test_empty_layers_preserved —— 空图层必须存在于 layers 返回值中。"""
 
 EMPTY_LAYERS = ["BOITE", "CABLE", "PTECH", "INFRASTRUCTURE", "ZNRO", "ZPM"]
 

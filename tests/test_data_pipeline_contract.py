@@ -1,4 +1,4 @@
-"""任务单要求：test_data_pipeline_contract —— /agent/data-pipeline 返回字段和数据类型稳定。"""
+"""验收要求：test_data_pipeline_contract —— /agent/data-pipeline 返回字段和数据类型稳定。"""
 
 REQUIRED_TOP_KEYS = [
     "success", "project_id", "project_name", "project_type",

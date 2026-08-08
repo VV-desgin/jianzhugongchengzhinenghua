@@ -1,4 +1,4 @@
-"""任务单要求：test_invalid_archive —— 损坏压缩包返回结构化错误，不导致服务崩溃。"""
+"""验收要求：test_invalid_archive —— 损坏压缩包返回结构化错误，不导致服务崩溃。"""
 
 
 def test_invalid_archive(client, tmp_path):
