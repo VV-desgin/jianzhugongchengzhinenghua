@@ -1,0 +1,34 @@
+{
+  "version": "1.0",
+  "description": "官方编码格式模板：前缀结构 + 各段长度规则，配置化后对新设备类型自动适配",
+  "separator": "-",
+  "root_codes": ["POP", "SRO"],
+  "templates": [
+    {
+      "id": "cable_amont",
+      "field": "CABLE_AMONT",
+      "description": "CDI-UNF-<PMParent>-<NumTiroir>-<NumCableSortant>-<Increment>",
+      "prefix_segments": [
+        {"name": "类型", "min": 2, "max": 4, "charset": "A-Z"},
+        {"name": "运营商", "min": 2, "max": 6, "charset": "A-Z"}
+      ],
+      "segments": [
+        {"name": "PMParent", "min": 1, "max": 5, "charset": "A-Z0-9", "optional": false},
+        {"name": "NumTiroir", "min": 1, "max": 5, "charset": "A-Z0-9", "optional": false},
+        {"name": "NumCableSortant", "min": 1, "max": 5, "charset": "A-Z0-9", "optional": false},
+        {"name": "Increment", "min": 3, "max": 3, "charset": "0-9", "optional": true}
+      ]
+    },
+    {
+      "id": "generic_two_segment_prefix",
+      "description": "任意两段式前缀 + 主体（自动适配新设备类型）",
+      "prefix_segments": [
+        {"name": "seg1", "min": 2, "max": 6, "charset": "A-Z"},
+        {"name": "seg2", "min": 2, "max": 8, "charset": "A-Z0-9"}
+      ],
+      "segments": [
+        {"name": "body", "min": 1, "max": 60, "charset": "A-Z0-9", "optional": false, "multi": true}
+      ]
+    }
+  ]
+}

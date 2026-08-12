@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# 测试缓存/过程文件
+.pytest_cache/
+测试记录/
+
+# 日志（含请求对账数据）
+api.log
+*.log
+
+# 工程记录/记忆文档（仅存本地，不上传）
+DEVELOPMENT_MEMORY.md
+
+# 部署/构建产物
+wheels/
+dist/
+build/
+*.egg-info/

@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "rules": {
+    "CABLE_AMONT": {
+      "max_len": 30,
+      "prefix_mode": "off",
+      "strip_increment": false,
+      "note": "官方口径已确认（需求方/数据方，2026-08-08）：CABLE_AMONT（上游/入箱光缆编号）字段 Longueur 设为 30（与 CABLE.CODE 对齐），按全串校验（含固定前缀与末尾 -NNN 纤芯号/端口号）。赛题一/四实测全串最长 29 ≤ 30，全部通过；>30 判超长。"
+    }
+  }
+}
