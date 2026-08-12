@@ -23,6 +23,7 @@ class CheckResultOut(BaseModel):
     expected_value: Optional[str] = None
     rule_id: str
     error_description: Optional[str] = None
+    severity: Optional[str] = None
 
 class RunRulesRequest(BaseModel):
     rule_ids: Optional[List[str]] = None   # None 或空列表表示全部
