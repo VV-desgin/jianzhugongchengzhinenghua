@@ -1,6 +1,6 @@
 """CABLE_AMONT 长度检查测试（length_rules.json 配置驱动）。
 
-官方口径已确认（2026-08-08）：CABLE_AMONT（上游/入箱光缆编号）Longueur 设为 30，
+官方口径已确认：CABLE_AMONT（上游/入箱光缆编号）Longueur 设为 30，
 按全串校验（含固定前缀与末尾 -NNN 纤芯号/端口号），>30 判超长。
 """
 

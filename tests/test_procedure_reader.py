@@ -74,7 +74,7 @@ def test_procedure_kb_endpoint(client):
     assert r.status_code == 200
     body = r.json()
     assert body["success"] is True
-    # 2026-08-11 起 procedure-kb 优先返回固定官方规程（docs/官方固定数据/施工规程知识库v2.0.xlsx，10 条），
+    # procedure-kb 优先返回固定官方规程（docs/官方固定数据/施工规程知识库v2.0.xlsx，10 条），
     # 固定文件缺失时回退包内规程文件（2 条）
     assert len(body["data"]["entries"]) >= 2
 
