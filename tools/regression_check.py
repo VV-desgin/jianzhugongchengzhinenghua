@@ -5,7 +5,7 @@
 - 场勘设计图.zip：survey_design，43/43/0，23 图层/244 对象
 - 赛题一.zip：full_design，277/49/228，规则分布精确一致，R008/R012/R021/R032=0
 - 赛题四-摩洛哥.rar：as_built，277/49/228（与赛题一同数据）
-- TC-01_正确工程案例.xlsx：Excel 工程包，109/8/98（warning 3：R-BOM-001×3），R007=1 R021=97 R-BOM-001=3，review_scope=non_spatial（2026-08-12 P0-01 起 warning 不计入 failed_rules）
+- TC-01_正确工程案例.xlsx：Excel 工程包，109/8/98（warning 3：R-BOM-001×3），R007=1 R021=97 R-BOM-001=3，review_scope=non_spatial（P0-01 起 warning 不计入 failed_rules）
 
 用法：python tools/regression_check.py
 """

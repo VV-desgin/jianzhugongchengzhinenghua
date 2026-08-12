@@ -65,7 +65,7 @@ RULE_IDS = {
 }
 
 SEVERITY_MAP = {
-    # 严重等级对齐《知识库v2.0 官方审查规则库》严重等级列（致命→fatal/高→error/中→warning，2026-08-11）
+    # 严重等级对齐《知识库v2.0 官方审查规则库》严重等级列（致命→fatal/高→error/中→warning）
     # fatal（阻断级）：触发后阻止报告生成
     "R001": "fatal",  # R-FILE-001 文件完整性
     "R002": "fatal",  # R-FILE-001 文件完整性
@@ -890,7 +890,7 @@ def _load_official_material_codes() -> set:
     except Exception:
         return set()
 
-# 官方 BOM_LIST 第一列默认物料码（物料库缺失时兜底，2026-08-11）
+# 官方 BOM_LIST 第一列默认物料码（物料库缺失时兜底）
 DEFAULT_MATERIAL_CODES = {
     "500003800", "500003890", "500002050", "500002054", "500002142", "500000510",
     "200000290", "200000273", "200000288", "500001742", "500002155", "500002480",
@@ -901,7 +901,7 @@ DEFAULT_MATERIAL_CODES = {
 
 
 def _find_bom_excel_codes(ctx: RuleContext) -> list:
-    """扫描包内被检查的 BOM 表（含“BOM物料”Sheet 或文件名含 bom_list 的文件），返回物料编码列（2026-08-11）。"""
+    """扫描包内被检查的 BOM 表（含“BOM物料”Sheet 或文件名含 bom_list 的文件），返回物料编码列。"""
     from .bom_fiber_reader import EXCEL_EXTS, list_sheet_names, read_sheet_rows
     codes = []
     seen = set()

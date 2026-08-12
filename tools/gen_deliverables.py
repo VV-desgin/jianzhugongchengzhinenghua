@@ -138,7 +138,7 @@ def main():
                    "category": c, "note": n} for r, c, n in [(r, *CLASSIFY[r]) for r, _ in STRATIFY]]
 
     auto_label = {"pipeline": "是（data-pipeline 路由）", "endpoint": "是（专用接口）", "not_routed": "否（已实现未路由）"}
-    lines = ["# 官方规则后端实现覆盖矩阵", "", "生成：2026-08-08｜依据：《图层表字段说明和数据校验规则.xlsx》校验规则 1.1~7.2（39 条）", ""]
+    lines = ["# 官方规则后端实现覆盖矩阵", "", "依据：《图层表字段说明和数据校验规则.xlsx》校验规则 1.1~7.2（39 条）", ""]
     lines.append("| 规则编号 | 规则名称 | 检测内容 | 后端规则ID | 后端函数/模块 | 是否实现 | 是否可自动执行 | 测试案例 | 测试结果 |")
     lines.append("|---|---|---|---|---|---|---|---|---|")
     for no, name, content, engine, funcs, auto, tests, result in OFFICIAL:
@@ -148,7 +148,7 @@ def main():
     (DOCS / "01_官方规则后端实现覆盖矩阵.md").write_text("\n".join(lines), encoding="utf-8")
 
     cnt = Counter(s["category"] for s in sample)
-    lines = ["# 智能审查抽查结果（真实摩洛哥工程，≥30 条）", "", f"生成：2026-08-08（补强 2026-08-09）｜样本来源：赛题四-摩洛哥.rar 最新审查结果（228 条 warning，0 error），按规则分布分层抽样；抽查基线版本：2026-08-07，2026-08-09 规则微调不影响本样本 {len(sample)} 条", ""]
+    lines = ["# 智能审查抽查结果（真实摩洛哥工程，≥30 条）", "", f"样本来源：赛题四-摩洛哥.rar 审查结果（228 条基线），按规则分布分层抽样；规则微调不影响本样本 {len(sample)} 条", ""]
     lines.append(f"汇总：正确检出 {cnt.get('正确检出', 0)}｜误报 {cnt.get('误报', 0)}｜疑似 {cnt.get('疑似', 0)}｜无法确认 {cnt.get('无法确认', 0)}")
     lines.append("")
     lines.append("| 序号 | 规则 | 检查对象 | 对象编号 | 问题描述 | 分类 | 说明 |")
@@ -160,7 +160,7 @@ def main():
     (DOCS / "02_智能审查抽查结果.md").write_text("\n".join(lines), encoding="utf-8")
     (DOCS / "02_抽查明细.json").write_text(json.dumps(sample, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    lines = ["# engineering_data 字段说明", "", "生成：2026-08-08｜来源：design_parser/project_data.py ENGINEERING_OBJECTS + 赛题四实测", ""]
+    lines = ["# engineering_data 字段说明", "", "来源：design_parser/project_data.py ENGINEERING_OBJECTS + 赛题四实测", ""]
     lines.append("| 对象 | 输出字段 | 源字段映射（按序取首个非空） | 实测样例（赛题四） | 缺失时行为 |")
     lines.append("|---|---|---|---|---|")
     for obj, field, srcs, sample_v, missing in ENG_FIELDS:
@@ -192,7 +192,7 @@ def main():
              "1. 无鉴权（生产需加 HTTPS+Token+限流）；2. Python 3.14 仅 SHP（fiona 跳过，pyshp 回退），GPKG/GeoJSON 需 3.10~3.13；3. RAR 解压 Linux 依赖系统 unrar 或联网自动下载；4. 项目临时文件 TTL 2 小时；5. /agent/orchestrate 需 LLM 配置；6. 交付包不含 wheels/（首次安装需联网）。"]
     (DOCS / "04_FastAPI接口说明.md").write_text("\n".join(lines), encoding="utf-8")
 
-    lines = ["# GIS 规则测试记录", "", "生成：2026-08-08｜测试基线：tests/test_gis_rules.py（93 项全量基线通过，本轮未重跑 pytest）", ""]
+    lines = ["# GIS 规则测试记录", "", "测试基线：tests/test_gis_rules.py（93 项全量基线通过，本轮未重跑 pytest）", ""]
     lines.append("| 测试函数 | 覆盖规则 | 场景 | 结果 |")
     lines.append("|---|---|---|---|")
     for fn, rule, scene, result in GIS_TESTS:

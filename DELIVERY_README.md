@@ -6,7 +6,7 @@
   ① 按需求方要求补齐统一 engineering_data 输出（objects.cable/boite/ptech，字段覆盖 code/longueur/capacite/type/nb_fibre_util/hauteur_appui，新增 GET /project/{id}/engineering-data，/agent/data-pipeline 同步返回）；
   ② 纤芯表真实表头自动识别（摘要带 headers，兼容 SRO TOPO 多级合并表头）；
   ③ R-FIBER-001 兼容真实 SRO TOPO（ODF 输入端口 / Entrée 输入纤芯查重）；
-  ④ CABLE_AMONT 官方口径 Longueur=30 已确认（2026-08-08）：按全串校验（含前缀与 -NNN），赛题真实数据最长 29 ≤ 30，>30 判超长。
+  ④ CABLE_AMONT 官方口径 Longueur=30 已确认：按全串校验（含前缀与 -NNN），赛题真实数据最长 29 ≤ 30，>30 判超长。
 - V0.2 交付包保留（design_parser_v0.2_delivery.zip），本包为 V0.3（design_parser_v0.3_delivery.zip）。
 
 ## 一、本轮修改文件清单
@@ -63,7 +63,7 @@
 - 新增 `engineering_data`：统一工程对象输出（{project_id, project_type, objects}，objects 包含 cable/boite/ptech/site/infrastructure，每项含唯一 id，字段覆盖 code/longueur/capacite/type/nb_fibre_util/hauteur_appui），供 BOM / 纤芯分配工作流使用；新增 `GET /project/{id}/engineering-data` 接口。
 - 新增 `POST /agent/inspect-file` 单文件识别；`/table-data` 支持 filter/page/page_size；错误响应统一为 {success:false, data:null, error:{code,message}}；`/device/{code}` 支持 crs 参数坐标转换；解析结果按文件+修改时间缓存。
 - 新增 `API_SAMPLES.md`：10 个新接口的真实返回 JSON 样例（由赛题一/赛题四数据生成）。
-- 新增 `design_parser/mappings/length_rules.json`：R032 字段长度检查可配置。CABLE_AMONT 官方口径 Longueur=30（2026-08-08 确认，与 CABLE.CODE 对齐）：按全串校验（含前缀与末尾 -NNN），两套赛题实测全串最长 29 ≤ 30 全通过，>30 判超长；配置 max_len/prefix_mode/strip_increment 可一键切换口径。
+- 新增 `design_parser/mappings/length_rules.json`：R032 字段长度检查可配置。CABLE_AMONT 官方口径 Longueur=30（与 CABLE.CODE 对齐）：按全串校验（含前缀与末尾 -NNN），两套赛题实测全串最长 29 ≤ 30 全通过，>30 判超长；配置 max_len/prefix_mode/strip_increment 可一键切换口径。
 - 新增 BOM/纤芯数据接口：`GET /project/{id}/bom-tables`、`GET /project/{id}/fiber-tables`、`GET /project/{id}/table-data`，支持解析 BOM_LIST/物料编码库/纤芯 TOPO 表格与 BOX/CABLE/SRO GPKG 层；`/agent/data-pipeline` 可传 `include_tables=true` 一并返回表格清单。
 - 大数据量优化：Excel 读取改为流式单遍扫描（BOM_LIST 104 万行过滤/翻页内存安全，实测过滤全表扫描约 6s）；	able-data 按（文件+参数+修改时间）缓存，重复请求不重扫；workbook_summary 单次打开工作簿遍历全部页签。
 - 工程文件生命周期：data-pipeline 返回的 project_id 保留解压文件供 bom/fiber/table-data 等后续接口取数（不再即时删除），过期项目由 TTL（2 小时）自动清理临时文件。

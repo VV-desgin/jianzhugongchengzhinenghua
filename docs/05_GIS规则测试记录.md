@@ -1,6 +1,6 @@
 # GIS 规则测试记录
 
-生成：2026-08-08（2026-08-09 复核）｜测试基线：tests/test_gis_rules.py；全量 pytest 93 passed，回归门 tools/regression_check.py 14 项 ALL PASS
+测试基线：tests/test_gis_rules.py；全量 pytest 通过，回归门 tools/regression_check.py 14 项 ALL PASS
 
 | 测试函数 | 覆盖规则 | 场景 | 结果 |
 |---|---|---|---|
