@@ -1325,9 +1325,9 @@ async def data_pipeline(
                             error_description=f"规则执行出错: {e}"
                         ))
 
-                review_results_out = [CheckResultOut(**r.model_dump()).model_dump() for r in all_results]
                 # 严重等级按官方知识库v2.0 对齐（SEVERITY_MAP：致命/高/中 → fatal/error/warning）
                 _normalize_severities(all_results)
+                review_results_out = [CheckResultOut(**r.model_dump()).model_dump() for r in all_results]
                 result["review_results"] = review_results_out
 
                 # P0-01：warning 不计入 failed_rules，按严重等级统计
@@ -1473,6 +1473,7 @@ async def orchestrate(
     file_url: Optional[str] = Body(None)
 ):
     """总控 Agent：文件识别→审查→文档理解→决策→BOM/纤芯→综合报告"""
+    request_id = uuid.uuid4().hex[:12]
     if file is not None:
         original_filename = file.filename
         content = await file.read()

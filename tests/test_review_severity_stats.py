@@ -106,3 +106,14 @@ def test_effective_severity_fallback():
     assert _effective_severity(r) == "warning"
     r2 = _r("R007", passed=False, severity=None)
     assert _effective_severity(r2) == "fatal"
+
+
+def test_data_pipeline_review_results_carry_severity(client, upload_survey):
+    """旧契约 review_results[] 序列化后必须保留 severity（P0-01 兼容）。"""
+    resp = upload_survey()
+    assert resp.status_code == 200
+    data = resp.json()
+    review_results = data.get("review_results") or []
+    assert review_results, "review_results 不应为空"
+    for item in review_results:
+        assert "severity" in item, f"review_results 缺少 severity: {item}"
