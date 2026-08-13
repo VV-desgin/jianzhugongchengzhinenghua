@@ -20,7 +20,7 @@ from api import app
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = Path(os.environ.get("DESIGN_PARSER_DATA_DIR", str(ROOT / "tests" / "data")))
-CASE = Path(os.environ.get("DESIGN_PARSER_CASE_FILE", str(ROOT / "tests" / "data" / "standard_cases" / "TC-01_正确工程案例.xlsx")))
+CASE = Path(os.environ.get("DESIGN_PARSER_CASE_FILE", str(ROOT / "tests" / "data" / "regression" / "TC-01_正确工程案例.xlsx")))
 
 SAITI1_RULES = {
     "R019": 147, "R022": 49, "R017": 23, "R007": 4,

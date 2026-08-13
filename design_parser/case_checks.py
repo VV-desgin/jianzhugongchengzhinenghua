@@ -62,6 +62,19 @@ def find_fiber_core_duplicates(sheets: Dict[str, List[list]]) -> List[Dict[str, 
     for rows in sheets.values():
         if not rows:
             continue
+        # 官方 SRO TOPO / 单箱页的表头可能不在首行（如 retour/说明行），
+        # 在前 8 行内定位真正的表头行，避免官方格式漏检。
+        header_idx = 0
+        for i in range(min(8, len(rows))):
+            r = rows[i]
+            if (
+                min(_col(r, "所属节点"), _col(r, "托盘编号"), _col(r, "光分路器"), _col(r, "IN")) >= 0
+                or min(_col(r, "SRO Port"), _col(r, "ODF Code"), _col(r, "ODF Port")) >= 0
+                or min(_col(r, "Entrée"), _col(r, "N°"), _col(r, "T"), _col(r, "F")) >= 0
+            ):
+                header_idx = i
+                break
+        rows = rows[header_idx:]
         node_idx = _col(rows[0], "所属节点")
         tray_idx = _col(rows[0], "托盘编号")
         spl_idx = _col(rows[0], "光分路器")
