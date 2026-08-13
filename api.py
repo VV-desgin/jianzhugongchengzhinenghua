@@ -32,7 +32,7 @@ from design_parser.bom_fiber_reader import (
     find_excel_files, find_gpkg_files, workbook_summary,
     read_sheet_rows, gpkg_summary, read_gpkg_rows,
 )
-from design_parser.rule_engine import ALL_RULES, RuleContext, SEVERITY_MAP
+from design_parser.rule_engine import ALL_RULES, RuleContext, SEVERITY_MAP, FIBER_SHEET_KEYWORDS
 
 def _effective_severity(r):
     """有效严重等级：SEVERITY_MAP 优先，未配置默认 warning（P0-01）。"""
@@ -203,6 +203,48 @@ def _count_cables(proj: ProjectData) -> int:
 
     """
     return sum(len(feats) for name, feats in proj.layers.items() if "CABLE" in name.upper())
+
+def _collect_fiber_tables(proj, max_sheets=10, max_rows=200):
+    """收集包内纤芯相关 Excel 表（供 Dify 纤芯分配工具 V0.5 使用）。"""
+    from design_parser.bom_fiber_reader import EXCEL_EXTS, list_sheet_names, read_sheet_rows
+    import re
+    out = []
+    seen = set()
+    for root in _project_roots(proj):
+        try:
+            files = sorted(Path(root).rglob("*"))
+        except OSError:
+            continue
+        for f in files:
+            if not f.is_file() or f.suffix.lower() not in EXCEL_EXTS:
+                continue
+            try:
+                key = str(f.resolve())
+            except OSError:
+                continue
+            if key in seen:
+                continue
+            seen.add(key)
+            try:
+                names = list_sheet_names(f)
+            except Exception:
+                continue
+            wanted = [
+                n for n in names
+                if n == "纤芯连接与分配"
+                or any(k in n.lower() for k in FIBER_SHEET_KEYWORDS)
+                or re.match(r"^(SRO|BPE|PBO)[-_]", n)
+            ]
+            for n in wanted[:max_sheets]:
+                try:
+                    data = read_sheet_rows(f, sheet=n, limit=max_rows)
+                except Exception:
+                    continue
+                if data.get("headers"):
+                    out.append({"file": f.name, "sheet": n,
+                             "headers": data["headers"], "rows": data["rows"][:max_rows]})
+    return out
+
 
 def _collect_serious_issues(results: list, total_cables: int = 0) -> List[dict]:
     """遍历审查结果，收集 severity='fatal' 且 passed=False 的阻断级问题。
@@ -1259,6 +1301,12 @@ async def data_pipeline(
                 "project_type": getattr(proj, "project_type", "unknown"),
                 "objects": proj.get_engineering_data()["objects"],
             }
+            try:
+                fiber_tables = _collect_fiber_tables(proj)
+                if fiber_tables:
+                    result["engineering_data"]["fiber_tables"] = fiber_tables
+            except Exception:
+                pass
             if getattr(proj, "is_excel_project", False):
                 result["review_scope"] = "non_spatial"
                 result["skipped_gis_rules"] = ["R-GIS-001~006", "R-SAFE-001~009", "R010", "R013", "R014", "R015", "R017", "R023", "R025", "R026", "R027", "R028"]

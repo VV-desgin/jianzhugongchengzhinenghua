@@ -42,3 +42,19 @@ def test_normal_case_still_works():
     ]
     issues = find_fiber_core_duplicates({"纤芯连接与分配": sheet})
     assert len(issues) == 1
+
+
+def test_data_pipeline_exposes_fiber_tables(client):
+    """data-pipeline 的 engineering_data 应输出 fiber_tables（供 Dify 纤芯工具 V0.5 使用）。"""
+    from pathlib import Path
+    case = Path(__file__).resolve().parents[1] / "tests" / "data" / "standard_cases" / "纤芯重复占用案例.xlsx"
+    with open(case, "rb") as f:
+        resp = client.post(
+            "/agent/data-pipeline",
+            files={"file": (case.name, f, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+            data={"excel_limit": "0", "pdf_chars": "0", "include_tables": "false"},
+        )
+    assert resp.status_code == 200
+    data = resp.json()
+    ft = (data.get("engineering_data") or {}).get("fiber_tables") or []
+    assert any(t.get("sheet") == "纤芯连接与分配" for t in ft), ft

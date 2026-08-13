@@ -26,6 +26,7 @@
 | ptech | hauteur_appui | HAUTEUR_AP, HAUTEUR_APPUI | 0 | 有（0 视为有效值） | 有值且映射正确 |
 
 - 输出顶层结构：`{project_id, project_type, objects:{cable,boite,ptech,site,infrastructure}}`；每个对象带唯一 `id`（如 `cable:CDI-JAD-MAR-01-0001`）。
+- 包内含纤芯表（纤芯连接与分配 / SRO TOPO / 单箱页）时，额外输出 `fiber_tables`（`[{file, sheet, headers, rows}]`），供 Dify 纤芯分配工具 V0.5 做重复占用检查。
 - 字段值均为 None 时不写入 JSON（源数据缺字段/缺值则不出现该键）。
 
 ## 核对结论
