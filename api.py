@@ -24,6 +24,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).parent))
 
 from design_parser.excel_reader import read_excel
+from design_parser.business_params import load_business_params
 from design_parser.pdf_reader import extract_text_from_pdf
 from design_parser.package import ProjectPackage
 from design_parser.project_data import ProjectData
@@ -75,6 +76,7 @@ from schemas import (
     RunRulesRequest,
     HealthResponse,
     DataPipelineResponse,
+    BusinessParamsOut,
 )
 
 LLM_API_URL = os.environ.get("LLM_API_URL", "")
@@ -163,6 +165,12 @@ async def unhandled_exception_handler(request, exc: Exception):
 @app.get("/health", response_model=HealthResponse)
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/agent/business-params", response_model=BusinessParamsOut)
+async def business_params():
+    """返回业务参数（损耗/预留/取整/利旧/纤芯/施工指令），供 Dify 工具节点消费。"""
+    return build_response(success=True, data=load_business_params())
 
 def get_project(project_id: str) -> ProjectData:
     proj = projects.get(project_id)
