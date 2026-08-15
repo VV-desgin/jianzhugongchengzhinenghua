@@ -89,8 +89,6 @@ def _normalize_reuse(value) -> str:
 
 
 class ProjectData:
-
-
     """工程设计文件解析核心：解压工程包 → 读取 QGS 工程 → 加载所有矢量/表格图层"""
     def __init__(self, archive_path: str):
         outer_pkg = ProjectPackage(archive_path)

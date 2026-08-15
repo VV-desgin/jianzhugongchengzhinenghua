@@ -10,6 +10,7 @@ def test_engineering_objects_include_reuse_key():
 def test_normalize_reuse_values():
     assert _normalize_reuse("OUI") == "yes"
     assert _normalize_reuse("YES") == "yes"
+    assert _normalize_reuse("REUTILISATION") == "yes"
     assert _normalize_reuse("1") == "yes"
     assert _normalize_reuse("利旧") == "yes"
     assert _normalize_reuse("NON") == "no"

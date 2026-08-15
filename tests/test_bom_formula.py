@@ -23,5 +23,6 @@ def test_splice_exact_no_packaging():
 
 
 def test_pole_integer():
-    r = compute_bom_quantity("500002337", 8.0, {}, P, unit="PC")
-    assert r["final"] == 8.0
+    # 非整数按整数向上取整：8.4 → 9
+    r = compute_bom_quantity("500002337", 8.4, {}, P, unit="PC")
+    assert r["final"] == 9.0
