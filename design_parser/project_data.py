@@ -37,6 +37,7 @@ ENGINEERING_OBJECTS = {
         "type": ["TYPE_CABLE", "TYPE"],
         "nb_fibre_util": ["NB_FIBRE_U", "NB_FIBRE_UTIL", "NB_FIBRE_D", "fiber_count"],
         "hauteur_appui": [],
+        "reuse": ["REUSE", "REUTILISATION", "REUSE_FLAG", "REUTILISE"],
     },
     "boite": {
         "code": ["CODE", "BOITE_CODE", "ID"],
@@ -45,6 +46,7 @@ ENGINEERING_OBJECTS = {
         "type": ["TYPE", "TYPE_BOITE", "BOXTYPE", "TYPE_FONC", "FONCTION"],
         "nb_fibre_util": ["NB_FIBRE_U", "NB_FIBRE_UTIL", "NBFUTILE"],
         "hauteur_appui": ["HAUTEUR_AP", "HAUTEUR_APPUI", "HAUTEUR"],
+        "reuse": ["REUSE", "REUTILISATION", "REUSE_FLAG", "REUTILISE"],
     },
     "ptech": {
         "code": ["CODE", "PTECH_CODE"],
@@ -53,6 +55,7 @@ ENGINEERING_OBJECTS = {
         "type": ["TYPE"],
         "nb_fibre_util": ["NB_FIBRE_U", "NB_FIBRE_UTIL"],
         "hauteur_appui": ["HAUTEUR_AP", "HAUTEUR_APPUI"],
+        "reuse": ["REUSE", "REUTILISATION", "REUSE_FLAG", "REUTILISE"],
     },
     "site": {
         "code": ["CODE", "SITE_CODE"],
@@ -61,6 +64,7 @@ ENGINEERING_OBJECTS = {
         "type": ["TYPE"],
         "nb_fibre_util": ["NB_FIBRE_U", "NB_FIBRE_UTIL"],
         "hauteur_appui": [],
+        "reuse": ["REUSE", "REUTILISATION", "REUSE_FLAG", "REUTILISE"],
     },
     "infrastructure": {
         "code": ["CODE", "INFRA_CODE"],
@@ -69,11 +73,24 @@ ENGINEERING_OBJECTS = {
         "type": ["TYPE", "TYPE_LOG"],
         "nb_fibre_util": ["NB_FIBRE_U", "NB_FIBRE_UTIL"],
         "hauteur_appui": [],
+        "reuse": ["REUSE", "REUTILISATION", "REUSE_FLAG", "REUTILISE"],
     },
 }
 
 
+def _normalize_reuse(value) -> str:
+    """利旧标记归一化：OUI/YES/1/TRUE/利旧/REUSE/REUTILISE/REUTILISATION → yes，其余 → no。"""
+    if value is None:
+        return "no"
+    s = str(value).strip().upper()
+    if s in ("OUI", "YES", "1", "TRUE", "利旧", "REUSE", "REUTILISE", "REUTILISATION"):
+        return "yes"
+    return "no"
+
+
 class ProjectData:
+
+
     """工程设计文件解析核心：解压工程包 → 读取 QGS 工程 → 加载所有矢量/表格图层"""
     def __init__(self, archive_path: str):
         outer_pkg = ProjectPackage(archive_path)
@@ -825,6 +842,9 @@ class ProjectData:
                             break
                     if value is None:
                         continue  # 值为 None 的字段不写入 JSON 输出
+                    if out_field == "reuse":
+                        item[out_field] = _normalize_reuse(value)
+                        continue
                     if out_field in ("longueur", "capacite", "nb_fibre_util", "hauteur_appui"):
                         try:
                             num = float(value)
