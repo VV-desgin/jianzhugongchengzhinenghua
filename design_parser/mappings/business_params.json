@@ -25,8 +25,8 @@
     "endpoint_m": 3.5
   },
   "packaging": {
-    "500002050": {"unit": "km", "pack": 2.0, "round": "ceil"},
-    "200001033": {"unit": "m", "pack": 500.0, "round": "ceil"},
+    "500002050": {"pack": 2.0, "round": "ceil"},
+    "200001033": {"pack": 500.0, "round": "ceil"},
     "500000510": {"round": "exact", "by": "splice_points"},
     "200000290": {"round": "integer"},
     "500001742": {"round": "integer"},

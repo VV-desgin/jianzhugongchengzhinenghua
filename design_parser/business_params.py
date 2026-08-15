@@ -11,7 +11,7 @@ DEFAULT_BUSINESS_PARAMS = {
                    "poles": {"rate": 0.0, "spare_rate": 0.02}},
     "reserve_lengths": {"pcp_joint_m": 1.35, "splice_per_side_m": 7.5,
                         "manhole_m": 0.75, "pole_m": 7.5, "endpoint_m": 3.5},
-    "packaging": {"500002050": {"unit": "km", "pack": 2.0, "round": "ceil"},
+    "packaging": {"500002050": {"pack": 2.0, "round": "ceil"},
                   "500000510": {"round": "exact", "by": "splice_points"}},
     "reuse": {"flag_field": "reuse",
               "high_possible": ["500002480", "500002337", "500002159", "500004729"],
