@@ -3,8 +3,8 @@
 
 基线：
 - 场勘设计图.zip：survey_design，43/43/0，23 图层/244 对象
-- 赛题一.zip：full_design，277/49/228，规则分布精确一致，R008/R012/R021/R032=0
-- 赛题四-摩洛哥.rar：as_built，277/49/228（与赛题一同数据）
+- 赛题一.zip：full_design，285/57/228（A5 路由补齐 R005_1/R005_3/R027/R028/R033 后 +8 通过、0 新增失败，规则分布精确一致），R008/R012/R021/R032=0
+- 赛题四-摩洛哥.rar：as_built，285/57/228（与赛题一同数据）
 - TC-01_正确工程案例.xlsx：Excel 工程包，109/8/98（warning 3：R-BOM-001×3），R007=1 R021=97 R-BOM-001=3，review_scope=non_spatial（P0-01 起 warning 不计入 failed_rules）
 
 用法：python tools/regression_check.py
@@ -58,7 +58,7 @@ def main():
             rev = d.get("review") or {}
             rules = Counter(i.get("rule_id") for i in (rev.get("issues") or []))
             ok &= check("赛题一: full_design", d.get("project_type") == "full_design", d.get("project_type"))
-            ok &= check("赛题一: 277/49/228", (rev.get("total_rules"), rev.get("passed_rules"), rev.get("failed_rules")) == (277, 49, 228), str((rev.get("total_rules"), rev.get("passed_rules"), rev.get("failed_rules"))))
+            ok &= check("赛题一: 285/57/228", (rev.get("total_rules"), rev.get("passed_rules"), rev.get("failed_rules")) == (285, 57, 228), str((rev.get("total_rules"), rev.get("passed_rules"), rev.get("failed_rules"))))
             ok &= check("赛题一: 规则分布精确", dict(rules) == SAITI1_RULES, str(dict(rules)))
             ok &= check("赛题一: R008/R012/R021/R032=0", rules.get("R008", 0) == 0 and rules.get("R012", 0) == 0 and rules.get("R021", 0) == 0 and rules.get("R032", 0) == 0)
         except FileNotFoundError as e:
@@ -70,7 +70,7 @@ def main():
             rev = d.get("review") or {}
             rules = Counter(i.get("rule_id") for i in (rev.get("issues") or []))
             ok &= check("赛题四: as_built", d.get("project_type") == "as_built", d.get("project_type"))
-            ok &= check("赛题四: 277/49/228", (rev.get("total_rules"), rev.get("passed_rules"), rev.get("failed_rules")) == (277, 49, 228), str((rev.get("total_rules"), rev.get("passed_rules"), rev.get("failed_rules"))))
+            ok &= check("赛题四: 285/57/228", (rev.get("total_rules"), rev.get("passed_rules"), rev.get("failed_rules")) == (285, 57, 228), str((rev.get("total_rules"), rev.get("passed_rules"), rev.get("failed_rules"))))
             ok &= check("赛题四: 规则分布精确", dict(rules) == SAITI1_RULES, str(dict(rules)))
         except FileNotFoundError as e:
             print(f"SKIP 赛题四: 数据缺失 {e}；可设置环境变量 DESIGN_PARSER_DATA_DIR 指向 01_官方赛题资料")
