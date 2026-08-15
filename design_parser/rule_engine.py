@@ -2831,6 +2831,55 @@ def check_pm_pbo_port_exceeds_cable_capacity(ctx: RuleContext) -> List[CheckResu
     return results
 
 
+def check_fiber_duplicate_by_cable_attrs(ctx: RuleContext) -> List[CheckResult]:
+    """R-FIBER-002：无纤芯表时，按光缆属性推断同路由纤芯重复占用（warning，需人工确认）。
+
+    假设：已用纤芯从 1 号芯起连续占用（与官方 PCP“前 N 芯使用”口径一致）。
+    """
+    results: List[CheckResult] = []
+    layer = next((k for k in ctx.layers if "CABLE" in k.upper() and "TYPE" not in k.upper()), None)
+    if layer is None:
+        return results
+    groups = {}
+    for feat in ctx.layers[layer]:
+        p = feat.properties
+        code = str(p.get("CODE") or p.get("code") or "").strip()
+        orig = str(p.get("ORIGINE") or p.get("origine") or "").strip().upper()
+        extr = str(p.get("EXTREMITE") or p.get("extremite") or "").strip().upper()
+        nb = p.get("NB_FIBRE_U") or p.get("nb_fibre_util")
+        if not code or not orig or not extr:
+            continue
+        try:
+            nb = int(float(nb))
+        except (TypeError, ValueError):
+            continue
+        if nb <= 0:
+            continue
+        groups.setdefault((orig, extr), []).append((code, nb))
+    for (orig, extr), items in groups.items():
+        for i in range(len(items)):
+            for j in range(i + 1, len(items)):
+                code_a, nb_a = items[i]
+                code_b, nb_b = items[j]
+                if code_a == code_b:
+                    continue
+                results.append(CheckResult(
+                    check_object=f"光缆 {code_a} 与 {code_b}",
+                    passed=False,
+                    problem_location="同路由纤芯占用",
+                    actual_value=f"{code_a} 已用 {nb_a} 芯 / {code_b} 已用 {nb_b} 芯",
+                    expected_value="同路由光缆占用纤芯不得重叠",
+                    rule_id="R-FIBER-002",
+                    error_description=(
+                        f"光缆 {code_a} 与 {code_b} 同路由（{orig}→{extr}），"
+                        f"按 1~{nb_a} 与 1~{nb_b} 号芯连续占用推断存在重叠，"
+                        "疑似纤芯重复占用，需人工确认"
+                    ),
+                    severity="warning",
+                ))
+    return results
+
+
 ALL_RULES = {
     "R001": check_file_missing,
     "R002": check_layer_missing,
@@ -2846,6 +2895,7 @@ ALL_RULES = {
     "R012": check_fiber_duplicate,
     "R-FIBER-001": check_fiber_core_duplicate,
     "R-BOM-001": check_bom_material_match,
+    "R-FIBER-002": check_fiber_duplicate_by_cable_attrs,
     "R013": check_device_in_coverage,
     "R014": check_cable_crossing_rule,
     "R015": check_distance_between,
