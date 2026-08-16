@@ -1283,6 +1283,7 @@ async def data_pipeline(
         "engineering_data": {"project_id": project_id, "project_type": "unknown", "objects": {"cable": [], "boite": [], "ptech": [], "site": [], "infrastructure": []}},
         "bom_tables": {"files": []},
         "fiber_tables": {"workbooks": [], "vectors": []},
+        "business_params": {},
     }
 
     proj = None
@@ -1313,6 +1314,7 @@ async def data_pipeline(
                 "project_type": getattr(proj, "project_type", "unknown"),
                 "objects": proj.get_engineering_data()["objects"],
             }
+            result["business_params"] = load_business_params()
             try:
                 fiber_tables = _collect_fiber_tables(proj)
                 if fiber_tables:

@@ -86,6 +86,7 @@ class DataPipelineResponse(BaseModel):
     review_scope: Optional[str] = None
     skipped_gis_rules: Optional[list] = None
     review_message: Optional[str] = None
+    business_params: Optional[dict] = None
 
 class BusinessParamsOut(BaseModel):
     success: bool
