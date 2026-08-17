@@ -82,6 +82,8 @@ python api.py
 
 上传工程包后返回固定结构 JSON：`success`、`project_id`、`project_name`、`project_type`、`layers`、`summary`、`review`、`warnings`、`errors`、`status`，可选参数 `include_tables=true` 时额外返回 `bom_tables`/`fiber_tables`（BOM 表与纤芯表清单，含前 50 行）；并保留 `file_info`、`review_results`、`serious_issues_detected`、`excel_data`、`pdf_text` 旧字段；新增 `engineering_data`（{project_id, project_type, objects} ，objects 包含 cable/boite/ptech）统一工程对象输出。
 响应含 `request_id`（请求对账 ID，同时写入服务日志，便于与 Dify 调用记录对账）。
+支持表单参数 `compact=true`（总控已发）：精简响应——excel_data/review_results 置空、engineering_data 不嵌 fiber_tables，保留 objects/fiber_assignments/business_params；`excel_limit` 默认 0（需要 excel_data 时传具体行数）。
+`engineering_data.fiber_assignments`（可选）：已用芯数生成的预置占用 `[{cable_code, assigned:[{tube,fiber,core}]}]`，供 Dify 纤芯分配工具消费（2026-08-17 后端注入）。
 
 - `success=true` 表示流水线执行成功，不代表工程无问题。
 - `review.issues[]` 每项固定包含 `rule_id`、`object_type`、`object_id`、`field`、`severity`、`message`、`source`。
@@ -104,6 +106,16 @@ curl -X POST http://127.0.0.1:8000/agent/data-pipeline -F "file=@场勘设计图
 #### POST /agent/full-pipeline — 全流程（含 LLM，阻断时返回结构化状态）
 
 #### POST /agent/auto-review — 自动识别文件类型并审查（不生成 LLM 报告）
+
+#### POST /agent/bom — 后端标准 BOM 计算（BOM 权威数据源）
+
+输入 `project_id`（已解析项目）或 `engineering_data`（含 objects），输出标准 BOM 行：设计对象→物料（官方映射表 29 类）→ 损耗/预留/取整（business_params 公式）→ 利旧冲减。每行含 物料编码/设计数量/损耗数量/预留数量/最终数量/计算依据/置信状态；未确认数量口径的物料标记“待人工确认”。
+
+```bash
+curl -X POST http://127.0.0.1:8000/agent/bom \
+  -H "Content-Type: application/json" \
+  -d '{"project_id": "xxxx"}'
+```
 
 ## 三、接口选择速查
 
