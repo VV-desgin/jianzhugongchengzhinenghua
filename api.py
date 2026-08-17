@@ -171,10 +171,49 @@ async def health():
     return {"status": "ok"}
 
 
+@app.get("/tf/{filename}")
+async def serve_test_file(filename: str):
+    """临时测试桥接：serve /tmp/tf 下的工程文件（供 Dify remote_url 下载，验证总控端到端）。"""
+    base = Path("/tmp/tf")
+    base_resolved = base.resolve()
+    target = (base / filename).resolve()
+    if not target.is_file() or not str(target).startswith(str(base_resolved) + os.sep):
+        raise HTTPException(404, "file not found")
+    return FileResponse(target, filename=filename)
+
+
 @app.get("/agent/business-params", response_model=BusinessParamsOut)
 async def business_params():
     """返回业务参数（损耗/预留/取整/利旧/纤芯/施工指令），供 Dify 工具节点消费。"""
     return build_response(success=True, data=load_business_params())
+
+
+@app.post("/agent/bom")
+async def agent_bom(
+    project_id: Optional[str] = Body(None),
+    engineering_data: Optional[dict] = Body(None),
+):
+    """后端标准 BOM 计算：设计对象→物料（官方映射表）→损耗/预留/取整（business_params）。
+
+    输入 project_id（已解析项目）或 engineering_data（含 objects）。
+    输出 bom_items（设计/损耗/预留/最终数量/计算依据/置信状态）+ summary。
+    后端成为 BOM 权威数据源，不依赖 Dify BOM 工具 V0.6。
+    """
+    from design_parser.bom_builder import build_bom
+    eng = None
+    if project_id:
+        proj = get_project(project_id)
+        eng = {"project_id": project_id, "objects": proj.get_engineering_data()["objects"]}
+    elif engineering_data:
+        eng = engineering_data
+    else:
+        raise HTTPException(400, "请提供 project_id 或 engineering_data")
+    try:
+        result = build_bom(eng)
+        return build_response(success=True, data=result)
+    except Exception as e:
+        logger.exception(f"BOM 计算失败: {e}")
+        raise HTTPException(500, f"BOM 计算失败: {e}")
 
 def get_project(project_id: str) -> ProjectData:
     proj = projects.get(project_id)
@@ -1223,9 +1262,10 @@ PROJECT_TYPE_MAP = {
 async def data_pipeline(
     file: UploadFile = File(None),
     file_url: Optional[str] = Body(None),
-    excel_limit: int = Body(500),
+    excel_limit: int = Body(0),
     pdf_chars: int = Body(3000),
     include_tables: bool = Body(False),
+    compact: bool = Body(False),
 ):
     """
     纯数据流水线：不经过 LLM，直接将解析与审查的结构化 JSON 返回。
@@ -1317,8 +1357,15 @@ async def data_pipeline(
             result["business_params"] = load_business_params()
             try:
                 fiber_tables = _collect_fiber_tables(proj)
-                if fiber_tables:
+                if not compact and fiber_tables:
                     result["engineering_data"]["fiber_tables"] = fiber_tables
+            except Exception:
+                pass
+            try:
+                from design_parser.rule_engine import build_fiber_assignments
+                fa = build_fiber_assignments(RuleContext(proj))
+                if fa:
+                    result["engineering_data"]["fiber_assignments"] = fa
             except Exception:
                 pass
             if getattr(proj, "is_excel_project", False):
@@ -1477,16 +1524,16 @@ async def data_pipeline(
         )
 
         try:
-            raw_excel = proj.get_excel_data()
-            excel_data = {}
-            for key, rows in raw_excel.items():
-                excel_data[key] = rows[:excel_limit]
-            result["excel_data"] = excel_data
+            if excel_limit > 0:
+                raw_excel = proj.get_excel_data()
+                excel_data = {}
+                for key, rows in raw_excel.items():
+                    excel_data[key] = rows[:excel_limit]
+                result["excel_data"] = excel_data
         except Exception as e:
             logger.warning(f"Excel 数据提取失败: {e}")
             result["excel_data"] = {"error": str(e)}
             result["warnings"].append(f"Excel 数据提取失败: {e}")
-
         try:
             pkg = ProjectPackage(archive_path)
             pdf_paths = list(pkg.temp_dir.rglob("*.pdf"))
@@ -1512,6 +1559,13 @@ async def data_pipeline(
 
         result["status"] = "success"
         result["success"] = True
+        if compact:
+            result["excel_data"] = {}
+            result["engineering_data"].pop("fiber_tables", None)
+            result["review_results"] = []
+            result["pdf_text"] = {}
+            result["bom_tables"] = {}
+            result["fiber_tables"] = {}
         logger.info(
             f"[{request_id}] 流水线完成: project_id={project_id} success={result['success']} "
             f"图层={result['summary']['layer_count']} 对象={result['summary']['object_count']}"

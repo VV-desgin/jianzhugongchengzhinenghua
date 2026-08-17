@@ -13,9 +13,10 @@
 |---|---|---|---|
 | file | file | 是* | 工程压缩包/文件（zip/rar/7z/qgz/qgs/shp 等），与 file_url 二选一 |
 | file_url | str | 否 | 远端文件 URL |
-| excel_limit | int | 否 | Excel 行数上限，默认 500，传 0 表示不返回 |
+| excel_limit | int | 否 | Excel 行数上限，默认 0（不返回 excel_data），需要时传具体行数 |
 | pdf_chars | int | 否 | PDF 字符上限，默认 3000，传 0 表示不返回 |
 | include_tables | bool | 否 | 是否在响应中附带 bom/fiber 表清单（表单字段，非 query） |
+| compact | bool | 否 | 精简响应（总控已发 compact=true）：excel_data/review_results 置空、engineering_data 不嵌 fiber_tables、保留 objects/fiber_assignments/business_params |
 
 ### 输出 JSON 顶层字段
 
@@ -26,6 +27,7 @@
 ### engineering_data 字段
 
 `{project_id, project_type, objects:{cable[], boite[], ptech[], site[], infrastructure[]}}`，对象字段覆盖 `code/longueur/capacite/type/nb_fibre_util/hauteur_appui`，None 值不输出，每项含唯一 `id`。
+`engineering_data.fiber_assignments`（可选）：按已用芯数生成的预置占用（`[{cable_code, assigned:[{tube,fiber,core}]}]`），供 Dify 纤芯分配工具读取——新分配自动跳过已占芯，冲突可直接体现（2026-08-17 后端注入）。
 
 ### 审查问题统一字段（中文 ↔ JSON）
 

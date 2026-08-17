@@ -2880,6 +2880,47 @@ def check_fiber_duplicate_by_cable_attrs(ctx: RuleContext) -> List[CheckResult]:
     return results
 
 
+def build_fiber_assignments(ctx: RuleContext) -> list:
+    """从 CABLE 图层已用芯数生成 fiber_assignments，供纤芯分配工具预置占用。
+
+    口径与 R-FIBER-002 一致：已用纤芯从 1 号芯起连续占用（官方 PCP 前 N 芯口径）。
+    位置映射与纤芯工具一致：tube=(c-1)//cores_per_tube+1, core=(c-1)%cores_per_tube+1。
+    输出 [{cable_code, assigned:[{tube,fiber,core}]}]，纤芯工具 get_existing() 直接消费。
+    """
+    layer = next((k for k in ctx.layers if "CABLE" in k.upper() and "TYPE" not in k.upper()), None)
+    if layer is None:
+        return []
+    assignments = []
+    for feat in ctx.layers[layer]:
+        p = feat.properties
+        code = str(p.get("CODE") or p.get("code") or "").strip()
+        if not code:
+            continue
+        try:
+            nb = int(float(p.get("NB_FIBRE_U") or p.get("nb_fibre_util") or 0))
+        except (TypeError, ValueError):
+            nb = 0
+        if nb <= 0:
+            continue
+        try:
+            cap = int(float(p.get("CAPACITE") or p.get("capacite") or 0))
+        except (TypeError, ValueError):
+            cap = 0
+        try:
+            modulo = max(1, int(float(p.get("MODULO") or p.get("modulo") or 1)))
+        except (TypeError, ValueError):
+            modulo = 1
+        cores_per_tube = max(1, cap // modulo) if cap > 0 else 4
+        assigned = []
+        for c in range(1, nb + 1):
+            tube = (c - 1) // cores_per_tube + 1
+            core = (c - 1) % cores_per_tube + 1
+            assigned.append({"tube": tube, "fiber": 1, "core": core})
+        assignments.append({"cable_code": code, "assigned": assigned})
+    return assignments
+
+
+
 ALL_RULES = {
     "R001": check_file_missing,
     "R002": check_layer_missing,
