@@ -29,6 +29,28 @@ MAT_STEEL_WIRE = "200001033"    # 6mm 钢绞线（M，架空光缆）
 MAT_TEST = "500002107"          # OTDR & OPM 测试（按光箱/接头点数）
 MAT_PERMIT = "500002155"        # RT/RW 许可（M，长度口径）
 
+# 官方映射表：设计对象 → 对应工序（组委会材料需求清单/映射表口径）
+_MATERIAL_PROCESS = {
+    MAT_SAFETY: ("PCP安装-安装标准", "项目整体"),
+    MAT_MOBILIZE: ("全局", "项目整体"),
+    MAT_CABLE: ("光纤接续", "光缆路由"),
+    MAT_POLE_7M_4IN: ("架空光缆配套施工", "架空杆路"),
+    MAT_POLE_9M_4IN: ("架空光缆配套施工", "架空杆路"),
+    MAT_POLE_7M_3IN: ("架空光缆配套施工", "架空杆路"),
+    MAT_POLE_7M_25IN: ("架空光缆配套施工", "架空杆路"),
+    MAT_FDT_72: ("PCP安装-安装标准；光纤接续", "PCP"),
+    MAT_BOX_16: ("电缆端接；光纤接续", "光箱"),
+    MAT_SPLICING: ("光纤接续", "接续点"),
+    MAT_CABLE_LABEL: ("人孔内光缆备件管理", "光缆路由"),
+    MAT_FDT_LABEL: ("PCP安装-安装标准", "PCP"),
+    MAT_FAT_LABEL: ("电缆端接", "光箱"),
+    MAT_POLE_LABEL: ("架空光缆配套施工", "架空杆路"),
+    MAT_HANGER: ("光纤接续", "光缆路由"),
+    MAT_STEEL_WIRE: ("光纤接续", "架空杆路"),
+    MAT_TEST: ("光学测试", "PCP/光箱"),
+    MAT_PERMIT: ("前置", "光缆路由"),
+}
+
 _MATERIAL_NAMES = {
     MAT_SAFETY: ("安全防护与准备", "PC"),
     MAT_MOBILIZE: ("运输、进场与退场", "PC"),
@@ -129,8 +151,11 @@ def build_bom(engineering_data: dict, params: dict = None) -> dict:
             loss_qty, reserve_qty = 0.0, 0.0
             final_qty = float(design_qty)
             detail = f"{calc_note}；按件/按点计量，不取整" if calc_note else "按件/按点计量，不取整"
+        process, location = _MATERIAL_PROCESS.get(material_code, ("待确认", "待确认"))
         items.append({
             "规则编号": f"BOM-B{rule_seq:02d}",
+            "对应工序": process,
+            "使用位置": location,
             "物料编码": material_code,
             "物料名称": name,
             "规格型号": _MATERIAL_NAMES.get(material_code, ("", ""))[0],
