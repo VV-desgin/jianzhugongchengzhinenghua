@@ -23,6 +23,64 @@ _FILE_CACHE: Dict[str, tuple] = {}
 _CACHE_MAX = 256
 
 
+def read_sheet_rows_multi(path: Path, sheets: List[str],
+                          limit: int = 100) -> Dict[str, Any]:
+    """一次打开 Excel 文件读取多个 sheet（避免重复打开文件，SRO TOPO 多页签场景）。
+
+    返回 {sheet_name: {"headers": [...], "rows": [[...]], "total": n}}；
+    与 read_sheet_rows 单表结构的 headers/rows 兼容（省略 file/kind/page 字段）。
+    结果按（文件+sheet列表+limit+修改时间）缓存。
+    """
+    wanted = [s for s in sheets if s]
+    if not wanted:
+        return {}
+    key = f"multi:{sorted(wanted)}:{limit}"
+
+    def build() -> Dict[str, Any]:
+        out: Dict[str, Any] = {}
+        suffix = path.suffix.lower()
+        if suffix == ".xlsx":
+            from openpyxl import load_workbook
+            wb = load_workbook(path, read_only=True, data_only=True)
+            try:
+                wanted_set = set(wanted)
+                for ws in wb.worksheets:
+                    if ws.title not in wanted_set:
+                        continue
+                    raw: List[list] = []
+                    for row in ws.iter_rows(values_only=True):
+                        raw.append([_to_serializable(c) for c in row])
+                        if len(raw) >= HEADER_SCAN_ROWS + limit:
+                            break
+                    header_idx = _detect_header_index(raw)
+                    out[ws.title] = {
+                        "headers": raw[header_idx] if raw else [],
+                        "rows": raw[header_idx + 1:][:limit],
+                        "total": ws.max_row or 0,
+                    }
+            finally:
+                wb.close()
+        else:
+            import xlrd
+            wb = xlrd.open_workbook(str(path))
+            wanted_set = set(wanted)
+            for sh in wb.sheets():
+                if sh.name not in wanted_set:
+                    continue
+                raw: List[list] = []
+                for r_idx in range(min(sh.nrows, HEADER_SCAN_ROWS + limit)):
+                    raw.append([_to_serializable(sh.cell_value(r_idx, c)) for c in range(sh.ncols)])
+                header_idx = _detect_header_index(raw)
+                out[sh.name] = {
+                    "headers": raw[header_idx] if raw else [],
+                    "rows": raw[header_idx + 1:][:limit],
+                    "total": sh.nrows,
+                }
+        return out
+
+    return _cached_file(path, key, build)
+
+
 def _cached_file(path: Path, key: str, builder):
     """按（路径+键+修改时间）缓存解析结果，文件变动后自动重算；容量超限时淘汰最旧条目。"""
     try:

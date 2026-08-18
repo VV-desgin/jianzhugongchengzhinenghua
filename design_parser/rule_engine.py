@@ -789,7 +789,7 @@ def _find_fiber_excel_sheets(ctx: RuleContext) -> Dict[str, Dict[str, Any]]:
     只读取工作表名含纤芯/接续/分配/topo/splice/fiber 关键词或 SRO/BPE/PBO 页签的表，
     单表最多 FIBER_SHEET_ROW_LIMIT 行，避免扫描 BOM 大表拖慢规则引擎。
     """
-    from .bom_fiber_reader import EXCEL_EXTS, list_sheet_names, read_sheet_rows
+    from .bom_fiber_reader import EXCEL_EXTS, list_sheet_names, read_sheet_rows, read_sheet_rows_multi
 
     out: Dict[str, Dict[str, Any]] = {}
     seen = set()
@@ -823,14 +823,11 @@ def _find_fiber_excel_sheets(ctx: RuleContext) -> Dict[str, Dict[str, Any]]:
             ]
             if not wanted:
                 continue
-            sheet_data = {}
-            for n in wanted:
-                try:
-                    data = read_sheet_rows(f, sheet=n, limit=FIBER_SHEET_ROW_LIMIT)
-                except Exception:
-                    continue
-                if data.get("headers"):
-                    sheet_data[n] = data
+            try:
+                multi = read_sheet_rows_multi(f, wanted, FIBER_SHEET_ROW_LIMIT)
+            except Exception:
+                continue
+            sheet_data = {n: d for n, d in multi.items() if d.get("headers")}
             if sheet_data:
                 out[key] = sheet_data
     return out
