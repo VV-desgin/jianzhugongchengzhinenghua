@@ -179,7 +179,9 @@ def build_bom(engineering_data: dict, params: dict = None) -> dict:
     total_cable_km = sum(_num(c.get("longueur")) for c in cables)
     n_splice = sum(1 for c in cables if _obj_field(c, "extremite", "EXTREMITE"))
     if total_cable_km > 0:
-        counts = {"splice": n_splice, "pole": len(ptechs), "endpoint": len(boites) + 1}
+        # 弯曲增长按 YD/T 5102-2024 表4：默认管道 10‰（可扩展按敷设方式细分）
+        counts = {"splice": n_splice, "pole": len(ptechs), "endpoint": len(boites) + 1,
+                  "bend_permille": 10}
         add(MAT_CABLE, total_cable_km, counts, f"{len(cables)}条光缆",
             "光缆长度累加→损耗→预留→2KM/盘取整")
     if total_cable_km > 0:

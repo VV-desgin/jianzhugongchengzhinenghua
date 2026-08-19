@@ -6,13 +6,13 @@ P = load_business_params()
 
 
 def test_cable_example_from_xlsx():
-    # 净量 5.253KM，损耗 5%，预留 1接头+4杆+1端部=0.0485KM，
+    # 净量 5.253KM，损耗 5%，预留 1接头(0.015)+4杆(0.03)+1终端盒(0.002)=0.047KM，
     # 2KM/盘向上取整 → 3 盘 = 6KM
     counts = {"pcp": 0, "splice": 1, "manhole": 0, "pole": 4, "endpoint": 1}
     r = compute_bom_quantity("500002050", 5.253, counts, P, unit="KM")
     assert abs(r["loss"] - 0.26265) < 1e-6
-    assert abs(r["reserve"] - 0.0485) < 1e-6
-    assert abs(r["before_pack"] - 5.56415) < 1e-6
+    assert abs(r["reserve"] - 0.047) < 1e-6
+    assert abs(r["before_pack"] - 5.56265) < 1e-6
     assert abs(r["final"] - 6.0) < 1e-6
     assert "3" in r["detail"] and "6" in r["detail"]
 

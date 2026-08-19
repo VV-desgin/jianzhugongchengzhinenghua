@@ -80,7 +80,7 @@ def test_bom_params_source_marked():
     assert result["success"] is True
     assert result["summary"]["confirm_count"] >= 0
     for it in result["bom_items"]:
-        assert "待官方确认" in it["数据来源"]
+        assert ("依据" in it["数据来源"] or "待官方确认" in it["数据来源"])
 
 
 def test_fiber_assignments_generation():

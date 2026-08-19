@@ -137,9 +137,9 @@ def check_ground_height(proj, cfg: dict) -> tuple:
             skipped.append(f"光缆 {code}：二维数据无 Z，无法检查离地高度")
             continue
         mode = (_prop(f, "MODE_POSE", "MODE_POSE") or "").upper()
-        threshold = cfg["aerial_cable"]["road_crossing_min_ground_height_m"] if (
-            "AERIEN" in mode or "架空" in mode) else cfg["wall_cable"]["min_ground_height_m"]
-        rule = "R-SAFE-002" if threshold >= 7 else "R-SAFE-001"
+        is_aerial = "AERIEN" in mode or "架空" in mode
+        threshold = cfg["aerial_cable"]["road_crossing_min_ground_height_m"] if is_aerial else cfg["wall_cable"]["min_ground_height_m"]
+        rule = "R-SAFE-002" if is_aerial else "R-SAFE-001"
         z = _min_z(geom)
         if z is not None and z < threshold:
             issues.append(_issue(rule, "CABLE", code,
@@ -182,7 +182,22 @@ def check_power_crossing(proj, cfg: dict) -> tuple:
                     continue
                 gap = abs(z1 - z2)
                 v = (_prop(pfeat, "VOLTAGE", "TENSION") or "").upper()
-                kv = "35kv_110kv" if any(k in v for k in ("35", "110")) else "10kv_below"
+                # 电压档位匹配：从高到低取最大命中档（YD/T 5102-2024 表12）
+                kv = "10kv_below"
+                if "1000" in v:
+                    kv = "750kv_1000kv"
+                elif "750" in v:
+                    kv = "500kv_750kv"
+                elif "500" in v:
+                    kv = "330kv_500kv"
+                elif "330" in v:
+                    kv = "220kv_330kv"
+                elif "220" in v:
+                    kv = "110kv_220kv"
+                elif "110" in v:
+                    kv = "35kv_110kv"
+                elif "35" in v:
+                    kv = "35kv_110kv"
                 prot = (_prop(pfeat, "LIGHTNING_PROTECTION", "PROTECTION") or "").upper()
                 with_prot = any(k in prot for k in ("OUI", "YES", "TRUE", "1", "有"))
                 threshold = table[kv]["with_lightning_protection" if with_prot else "without_lightning_protection"]

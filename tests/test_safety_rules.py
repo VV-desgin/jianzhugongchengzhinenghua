@@ -23,7 +23,7 @@ def _proj(layers):
 def test_config_values_from_material():
     cfg = _load_config()
     assert cfg["wall_cable"]["min_ground_height_m"] == 4.5
-    assert cfg["aerial_cable"]["road_crossing_min_ground_height_m"] == 7.0
+    assert cfg["aerial_cable"]["road_crossing_min_ground_height_m"] == 5.5
     assert cfg["wall_cable_clearances_mm"]["避雷线接地引线"] == {"parallel_mm": 1000, "crossing_mm": 300}
     assert cfg["wall_cable_clearances_mm"]["电力线"] == {"parallel_mm": 150, "crossing_mm": 50}
     assert cfg["wall_cable_clearances_mm"]["热力管"] == {"parallel_mm": 500, "crossing_mm": 500}
@@ -40,7 +40,7 @@ def test_ground_height_3d():
 
 
 def test_aerial_cable_road_height():
-    aerial = _feat("CABLE", 0, LineString([(0, 0, 6.0), (1, 1, 8.0)]),
+    aerial = _feat("CABLE", 0, LineString([(0, 0, 5.0), (1, 1, 8.0)]),
                    {"CODE": "C-A", "MODE_POSE": "AERIEN"})
     data = run_safety_checks(_proj({"CABLE": [aerial]}))
     assert any(i["rule_id"] == "R-SAFE-002" and i["object_id"] == "C-A" for i in data["issues"])
@@ -80,7 +80,7 @@ def test_utility_parallel_clearance():
 def test_safety_check_empty_and_source():
     data = run_safety_checks(_proj({}))
     assert data["total"] == 0
-    assert "source" in data and "施工" in data["source"]
+    assert "source" in data and "YD/T 5102-2024" in data["source"]
     assert data["counts"] == {}
 
 

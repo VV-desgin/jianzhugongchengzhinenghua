@@ -23,7 +23,7 @@ def apply_loss(net_qty: float, material_code: str, params: dict) -> tuple:
     return loss, f"损耗率 {rate:.0%}"
 
 
-def apply_reserve_m(counts: dict, params: dict) -> tuple:
+def apply_reserve_m(counts: dict, params: dict, net_qty: float = None) -> tuple:
     r = params.get("reserve_lengths", {})
     parts = []
     total = 0.0
@@ -49,9 +49,16 @@ def apply_reserve_m(counts: dict, params: dict) -> tuple:
         parts.append(f"{pole:g}根电杆上下杆预留{v:g}m")
     endpoint = _num(counts.get("endpoint"))
     if endpoint:
-        v = _num(r.get("endpoint_m"), 3.5) * endpoint
+        # YD/T 5102-2024 表4：交接箱/分纤箱/终端盒处预留 1~3m（取中值 2.0）
+        v = _num(r.get("endpoint_m"), 2.0) * endpoint
         total += v
-        parts.append(f"{endpoint:g}处端点预留{v:g}m")
+        parts.append(f"{endpoint:g}处分纤箱/终端盒预留{v:g}m")
+    # 光缆弯曲增长（YD/T 5102-2024 表4：直埋 7‰、管道 10‰、架空 7~10‰）
+    bend_permille = _num(counts.get("bend_permille"))
+    if bend_permille > 0 and net_qty is not None and net_qty > 0:
+        v = net_qty * bend_permille / 1000.0
+        total += v
+        parts.append(f"弯曲增长 {bend_permille:g}‰ × {net_qty:g}{'KM' if net_qty < 1000 else 'm'}")
     return total, "；".join(parts) if parts else "无预留场景"
 
 
@@ -75,7 +82,7 @@ def compute_bom_quantity(material_code: str, net_qty: float, counts: Dict,
         params = load_business_params()
     net = _num(net_qty)
     loss, loss_desc = apply_loss(net, material_code, params)
-    reserve_m, reserve_desc = apply_reserve_m(counts or {}, params)
+    reserve_m, reserve_desc = apply_reserve_m(counts or {}, params, net_qty=net)
     reserve = reserve_m / 1000.0 if unit == "KM" else reserve_m
     before = net + loss + reserve
     final, pack_desc = apply_packaging(before, material_code, params, unit)
