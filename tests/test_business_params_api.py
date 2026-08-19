@@ -10,7 +10,7 @@ def test_business_params_endpoint():
     assert r.status_code == 200
     data = r.json()["data"]
     assert data["fiber_policy"]["required_cores_default"] == 4
-    assert data["_meta"]["source"].startswith("行业参考默认值")
+    assert data["_meta"]["source"].startswith("依据")
 
 
 def test_data_pipeline_response_carries_business_params():

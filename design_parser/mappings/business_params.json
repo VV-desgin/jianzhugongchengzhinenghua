@@ -73,7 +73,15 @@
     "splice_per_side_m": 7.5,
     "manhole_m": 0.75,
     "pole_m": 7.5,
-    "endpoint_m": 3.5
+    "endpoint_m": 2.0,
+    "endpoint_station_underground_m": 7.5,
+    "endpoint_station_ground_m": 12.5,
+    "bend_growth_permille": {
+      "direct_buried": 7,
+      "duct": 10,
+      "aerial": 10
+    },
+    "note": "依据 YD/T 5102-2024 表4：交接箱/分纤箱/终端盒处预留1~3m(取2.0)；接头每侧5~10m(取7.5)；人孔0.5~1m(取0.75)；弯曲增长直埋7‰/管道10‰/架空10‰；局站预留地下5~10m/地面5~20m(字段预留)"
   },
   "packaging": {
     "500002050": {
