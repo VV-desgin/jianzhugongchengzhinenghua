@@ -1,53 +1,95 @@
-# ===================== 全局配置 =====================
-null_values: ["", "NULL", "None", "/", "N/A", " "]
-target_crs: "EPSG:4490"
-
-# ===================== 图层定义 =====================
+null_values:
+- ''
+- 'NULL'
+- None
+- /
+- N/A
+- ' '
+target_crs: EPSG:4490
 layers:
-  # ----- 箱体（点） -----
   BOITE:
     target_entity: Box
     field_map:
-      id: ["fid"]
-      code: ["CODE", "BOITE_CODE", "ID"]
-      type: ["TYPE", "TYPE_BOITE", "BOXTYPE"]
-      capacity: ["CAPACITE", "CAPACITY"]
+      id:
+      - fid
+      code:
+      - CODE
+      - BOITE_CODE
+      - ID
+      type:
+      - TYPE
+      - TYPE_BOITE
+      - BOXTYPE
+      capacity:
+      - CAPACITE
+      - CAPACITY
       location: null
-      parent_device: ["PARENT_CODE"]
+      parent_device:
+      - PARENT_CODE
       geometry: null
-      SUPPORT: ["SUPPORT"]
-      TYPE_STRUC: ["TYPE_STRUC"]
-      DATE_POSE: ["DATE_POSE"]
-      ISOLE: ["ISOLE"]
-      class: ["class"]
-      in_start: ["in_start"]
-      TYPE_FONC: ["TYPE_FONC"]
-      cable_in: ["cable_in"]
-      AMONT: ["AMONT"]
-      in_amt: ["in_amt"]
-      REFERENCE: ["REFERENCE"]
-      GESTIONNAI: ["GESTIONNAI"]
-      EMPRISE: ["EMPRISE"]
-      VOLUME: ["VOLUME"]
-      COMMENT: ["COMMENT"]
-      FONCTION: ["FONCTION"]
-      pass_seq: ["pass_seq"]
-      NOM: ["NOM"]
-      FABRICANT: ["FABRICANT"]
-      sro: ["sro"]
-      ETAT: ["ETAT"]
-      NBABONNES: ["NBABONNES"]
-      NBEPISSURE: ["NBEPISSURE"]
-      NBFUTILE: ["NBFUTILE"]
-      in_end: ["in_end"]
-      skip_count: ["skip_count"]
-      DIMENSION: ["DIMENSION"]
-      HAUTEUR: ["HAUTEUR"]
-      INTERCO: ["INTERCO"]
-      PROPRIETAI: ["PROPRIETAI"]
+      SUPPORT:
+      - SUPPORT
+      TYPE_STRUC:
+      - TYPE_STRUC
+      DATE_POSE:
+      - DATE_POSE
+      ISOLE:
+      - ISOLE
+      class:
+      - class
+      in_start:
+      - in_start
+      TYPE_FONC:
+      - TYPE_FONC
+      cable_in:
+      - cable_in
+      AMONT:
+      - AMONT
+      in_amt:
+      - in_amt
+      REFERENCE:
+      - REFERENCE
+      GESTIONNAI:
+      - GESTIONNAI
+      EMPRISE:
+      - EMPRISE
+      VOLUME:
+      - VOLUME
+      COMMENT:
+      - COMMENT
+      FONCTION:
+      - FONCTION
+      pass_seq:
+      - pass_seq
+      NOM:
+      - NOM
+      FABRICANT:
+      - FABRICANT
+      sro:
+      - sro
+      ETAT:
+      - ETAT
+      NBABONNES:
+      - NBABONNES
+      NBEPISSURE:
+      - NBEPISSURE
+      NBFUTILE:
+      - NBFUTILE
+      in_end:
+      - in_end
+      skip_count:
+      - skip_count
+      DIMENSION:
+      - DIMENSION
+      HAUTEUR:
+      - HAUTEUR
+      INTERCO:
+      - INTERCO
+      PROPRIETAI:
+      - PROPRIETAI
     type_conversions:
-      capacity: "int"
-    code_field: "CODE"
+      capacity: int
+    code_field: CODE
     field_lengths:
       CODE: 30
       CODE_PTC: 30
@@ -74,46 +116,81 @@ layers:
       X: 24
       Y: 24
       COMMENT: 50
-
-  # ----- 光缆（线） -----
   CABLE:
     target_entity: Cable
     field_map:
-      id: ["CODE", "CABLE_CODE"]
-      code: ["CODE", "CABLE_CODE"]
-      capacity: ["FIBER_COUNT", "CAPACITE", "CAPACITY"]
-      length: ["LGR_REELLE", "LGR_CARTO"]
-      start_device: ["START_CODE", "ORIGINE"]
-      end_device: ["END_CODE", "EXTREMITE"]
+      id:
+      - CODE
+      - CABLE_CODE
+      code:
+      - CODE
+      - CABLE_CODE
+      capacity:
+      - FIBER_COUNT
+      - CAPACITE
+      - CAPACITY
+      length:
+      - LGR_REELLE
+      - LGR_CARTO
+      start_device:
+      - START_CODE
+      - ORIGINE
+      end_device:
+      - END_CODE
+      - EXTREMITE
       geometry: null
-      fiber_count: ["fiber_count"]
-      TYPE_STRUC: ["TYPE_STRUC"]
-      DATE_POSE: ["DATE_POSE"]
-      ISOLE: ["ISOLE"]
-      SECTION: ["SECTION"]
-      TYPE_FONC: ["TYPE_FONC"]
-      origin_box: ["origin_box"]
-      port_end: ["port_end"]
-      GESTIONNAI: ["GESTIONNAI"]
-      REFERENCE: ["REFERENCE"]
-      EMPRISE: ["EMPRISE"]
-      COMMENT: ["COMMENT"]
-      port_amt: ["port_amt"]
-      TYPEFIBRE: ["TYPEFIBRE"]
-      RATTACH: ["RATTACH"]
-      port_start: ["port_start"]
-      NOM: ["NOM"]
-      FABRICANT: ["FABRICANT"]
-      sro: ["sro"]
-      ETAT: ["ETAT"]
-      level: ["level"]
-      DIAMETRE: ["DIAMETRE"]
-      skip_count: ["skip_count"]
-      PROPRIETAI: ["PROPRIETAI"]
+      fiber_count:
+      - fiber_count
+      TYPE_STRUC:
+      - TYPE_STRUC
+      DATE_POSE:
+      - DATE_POSE
+      ISOLE:
+      - ISOLE
+      SECTION:
+      - SECTION
+      TYPE_FONC:
+      - TYPE_FONC
+      origin_box:
+      - origin_box
+      port_end:
+      - port_end
+      GESTIONNAI:
+      - GESTIONNAI
+      REFERENCE:
+      - REFERENCE
+      EMPRISE:
+      - EMPRISE
+      COMMENT:
+      - COMMENT
+      port_amt:
+      - port_amt
+      TYPEFIBRE:
+      - TYPEFIBRE
+      RATTACH:
+      - RATTACH
+      port_start:
+      - port_start
+      NOM:
+      - NOM
+      FABRICANT:
+      - FABRICANT
+      sro:
+      - sro
+      ETAT:
+      - ETAT
+      level:
+      - level
+      DIAMETRE:
+      - DIAMETRE
+      skip_count:
+      - skip_count
+      PROPRIETAI:
+      - PROPRIETAI
     type_conversions:
-      length: "float"
-      capacity: "int"
-    code_field: "CODE"
+      length: float
+      capacity: int
+    code_field: CODE
     field_lengths:
       CODE: 30
       NOM: 30
@@ -139,25 +216,36 @@ layers:
       TYPE_PROP: 30
       LONGUEUR: 24
       COMMENT: 50
-
-  # ----- 基础设施（线） -----
   INFRASTRUCTURE:
     target_entity: Infrastructure
     field_map:
-      id: ["fid"]
-      code: ["CODE", "INFRA_CODE"]
-      ref_plaque: ["REF_PLAQUE"]
-      origine: ["ORIGINE"]
-      extremite: ["EXTREMITE"]
-      composition: ["COMPOSITIO"]
-      type: ["TYPE"]
-      type_log: ["TYPE_LOG"]
-      statut: ["STATUT"]
-      proprietaire: ["PROPRIETAI"]
-      gestionnaire: ["GESTIONNAI"]
-      longueur: ["LONGUEUR"]
+      id:
+      - fid
+      code:
+      - CODE
+      - INFRA_CODE
+      ref_plaque:
+      - REF_PLAQUE
+      origine:
+      - ORIGINE
+      extremite:
+      - EXTREMITE
+      composition:
+      - COMPOSITIO
+      type:
+      - TYPE
+      type_log:
+      - TYPE_LOG
+      statut:
+      - STATUT
+      proprietaire:
+      - PROPRIETAI
+      gestionnaire:
+      - GESTIONNAI
+      longueur:
+      - LONGUEUR
       geometry: null
-    code_field: "CODE"
+    code_field: CODE
     field_lengths:
       fid: 10
       CODE: 30
@@ -173,18 +261,21 @@ layers:
       GESTIONNAI: 50
       LONGUEUR: 24
       COMMENT: 50
-
-  # ----- 支撑点（点） -----
   PTECH:
     target_entity: Box
     field_map:
-      id: ["fid"]
-      code: ["CODE", "PTECH_CODE"]
-      type: ["TYPE"]
-      capacity: ["CAPACITY"]
+      id:
+      - fid
+      code:
+      - CODE
+      - PTECH_CODE
+      type:
+      - TYPE
+      capacity:
+      - CAPACITY
       location: null
       geometry: null
-    code_field: "CODE"
+    code_field: CODE
     field_lengths:
       fid: 10
       CODE: 30
@@ -205,18 +296,20 @@ layers:
       X: 24
       Y: 24
       COMMENT: 50
-
-  # ----- 建筑物（点） -----
   IMB:
     target_entity: Box
     field_map:
-      id: ["fid"]
-      code: ["CODE"]
-      type: ["TYPE_CLIENT"]
-      capacity: ["NB_LOC_TOT"]
+      id:
+      - fid
+      code:
+      - CODE
+      type:
+      - TYPE_CLIENT
+      capacity:
+      - NB_LOC_TOT
       location: null
       geometry: null
-    code_field: "CODE"
+    code_field: CODE
     field_lengths:
       fid: 10
       CODE: 30
@@ -250,18 +343,20 @@ layers:
       X: 24
       Y: 24
       COMMENT: 50
-
-  # ----- 站点（点） -----
   SITE:
     target_entity: Box
     field_map:
-      id: ["fid"]
-      code: ["CODE"]
-      type: ["TYPE"]
-      capacity: ["NB_LOC_TOT"]
+      id:
+      - fid
+      code:
+      - CODE
+      type:
+      - TYPE
+      capacity:
+      - NB_LOC_TOT
       location: null
       geometry: null
-    code_field: "CODE"
+    code_field: CODE
     field_lengths:
       fid: 10
       CODE: 20
@@ -280,21 +375,25 @@ layers:
       X: 24
       Y: 24
       COMMENT: 50
-
-  # ----- NRO 区域（面） -----
   ZNRO:
     target_entity: Znro
     field_map:
-      id: ["fid"]
-      code: ["CODE"]
-      ref_plaque: ["REF_PLAQUE"]
-      ref_nro: ["REF_NRO"]
-      statut: ["STATUT"]
-      nb_prises: ["NB_PRISES"]
+      id:
+      - fid
+      code:
+      - CODE
+      ref_plaque:
+      - REF_PLAQUE
+      ref_nro:
+      - REF_NRO
+      statut:
+      - STATUT
+      nb_prises:
+      - NB_PRISES
       geometry: null
     type_conversions:
-      nb_prises: "int"
-    code_field: "CODE"
+      nb_prises: int
+    code_field: CODE
     field_lengths:
       fid: 10
       CODE: 30
@@ -303,22 +402,27 @@ layers:
       STATUT: 50
       NB_PRISES: 10
       COMMENT: 50
-
-  # ----- PM 区域（面） -----
   ZPM:
     target_entity: Zpm
     field_map:
-      id: ["fid"]
-      code: ["CODE"]
-      ref_plaque: ["REF_PLAQUE"]
-      ref_nro: ["REF_NRO"]
-      ref_sro: ["REF_SRO"]
-      statut: ["STATUT"]
-      nb_prises: ["NB_PRISES"]
+      id:
+      - fid
+      code:
+      - CODE
+      ref_plaque:
+      - REF_PLAQUE
+      ref_nro:
+      - REF_NRO
+      ref_sro:
+      - REF_SRO
+      statut:
+      - STATUT
+      nb_prises:
+      - NB_PRISES
       geometry: null
     type_conversions:
-      nb_prises: "int"
-    code_field: "CODE"
+      nb_prises: int
+    code_field: CODE
     field_lengths:
       fid: 10
       CODE: 30
@@ -328,194 +432,207 @@ layers:
       STATUT: 50
       NB_PRISES: 10
       COMMENT: 50
-
-  # ----- 空模板（忽略） -----
   _IMB:
     target_entity: Box
     field_map:
-      id: ["fid"]
-      code: ["CODE", "_IMB_CODE"]
-      type: ["TYPE"]
-      capacity: ["CAPACITY"]
+      id:
+      - fid
+      code:
+      - CODE
+      - _IMB_CODE
+      type:
+      - TYPE
+      capacity:
+      - CAPACITY
       location: null
       geometry: null
-    code_field: "CODE"
-
-  # ----- SRO 图层（点） -----
+    code_field: CODE
   SRO:
     target_entity: Box
     field_map:
-      id: ["fid"]
-      code: ["CODE"]
-      DATE_POSE: ["DATE_POSE"]
-      NO_ODF_DIS: ["NO_ODF_DIS"]
-      class: ["class"]
-      NBPRISES: ["NBPRISES"]
-      NO_ODF_SPL: ["NO_ODF_SPL"]
-      skip_count: ["skip_count"]
-      GESTIONNAI: ["GESTIONNAI"]
-      TYPE_FONCT: ["TYPE_FONCT"]
-      RATTACH: ["RATTACH"]
-      NO_ODF_TRA: ["NO_ODF_TRA"]
-      PROPRIETAI: ["PROPRIETAI"]
-      ETAT: ["ETAT"]
-    code_field: "CODE"
-
-# ===================== 必填字段（按官方标准） =====================
+      id:
+      - fid
+      code:
+      - CODE
+      DATE_POSE:
+      - DATE_POSE
+      NO_ODF_DIS:
+      - NO_ODF_DIS
+      class:
+      - class
+      NBPRISES:
+      - NBPRISES
+      NO_ODF_SPL:
+      - NO_ODF_SPL
+      skip_count:
+      - skip_count
+      GESTIONNAI:
+      - GESTIONNAI
+      TYPE_FONCT:
+      - TYPE_FONCT
+      RATTACH:
+      - RATTACH
+      NO_ODF_TRA:
+      - NO_ODF_TRA
+      PROPRIETAI:
+      - PROPRIETAI
+      ETAT:
+      - ETAT
+    code_field: CODE
 required_fields:
   IMB:
-    - CODE
-    - REF_PLAQUE
-    - REGION
-    - PROVINCE
-    - VILLE
-    - COMMUNE
-    - CODE_POSTAL
-    - NUMERO_VOIE
-    - TYPE_VOIE
-    - CODE_VOIE
-    - TYPE_BATIMENT
-    - TYPE_CLIENT
-    - NB_LOC_RES
-    - NB_LOC_PRO
-    - NB_LOC_TOT
-    - RACCORDEMENT
-    - STATUT
-    - NB_ETAGE
-    - COL_MONTANTE
-    - SOUS_SOL
-    - SOUS_SOL_COMMUN
-    - BPE_CODE
-    - X
-    - Y
+  - CODE
+  - REF_PLAQUE
+  - REGION
+  - PROVINCE
+  - VILLE
+  - COMMUNE
+  - CODE_POSTAL
+  - NUMERO_VOIE
+  - TYPE_VOIE
+  - CODE_VOIE
+  - TYPE_BATIMENT
+  - TYPE_CLIENT
+  - NB_LOC_RES
+  - NB_LOC_PRO
+  - NB_LOC_TOT
+  - RACCORDEMENT
+  - STATUT
+  - NB_ETAGE
+  - COL_MONTANTE
+  - SOUS_SOL
+  - SOUS_SOL_COMMUN
+  - BPE_CODE
+  - X
+  - Y
+  - QUARTIER
+  - NOM_VOIE
+  - NOM_BATIMENT
   BOITE:
-    - CODE
-    - CODE_PTC
-    - REF_PLAQUE
-    - REF_NRO
-    - REF_PM
-    - TYPE
-    - TYPE_STRUCTURE
-    - MODE_POSE
-    - CAPACITE
-    - NB_LOGEMENT
-    - NB_SPLICES
-    - NB_FIBRE_UTIL
-    - FABRIQUANT
-    - REF_BPE
-    - NB_CASSETTES_MAX
-    - CABLE_AMONT
-    - STATUT
-    - PROPRIETAIRE
-    - GESTIONNAIRE
-    - ADRESSSE
-    - VILLE
-    - CODE_POSTAL
-    - X
-    - Y
+  - CODE
+  - CODE_PTC
+  - REF_PLAQUE
+  - REF_NRO
+  - REF_PM
+  - TYPE
+  - TYPE_STRUCTURE
+  - MODE_POSE
+  - CAPACITE
+  - NB_LOGEMENT
+  - NB_SPLICES
+  - NB_FIBRE_UTIL
+  - FABRIQUANT
+  - REF_BPE
+  - NB_CASSETTES_MAX
+  - CABLE_AMONT
+  - STATUT
+  - PROPRIETAIRE
+  - GESTIONNAIRE
+  - ADRESSSE
+  - VILLE
+  - CODE_POSTAL
+  - X
+  - Y
   CABLE:
-    - CODE
-    - REF_PLAQUE
-    - REF_NRO
-    - REF_PM
-    - CODE_INFRA
-    - ORIGINE
-    - EXTREMITE
-    - TYPE_CABLE
-    - DIAMETRE
-    - MODE_POSE
-    - CAPACITE
-    - MODULO
-    - FABRIQUANT
-    - REF_PRODUIT
-    - TYPE_FIBRE
-    - NB_FIBRE_UTIL
-    - NB_FIBRE_DISP
-    - STATUT
-    - PROPRIETAIRE
-    - GESTIONNAIRE
-    - TYPE_PROP
-    - LONGUEUR
+  - CODE
+  - REF_PLAQUE
+  - REF_NRO
+  - REF_PM
+  - CODE_INFRA
+  - ORIGINE
+  - EXTREMITE
+  - TYPE_CABLE
+  - DIAMETRE
+  - MODE_POSE
+  - CAPACITE
+  - MODULO
+  - FABRIQUANT
+  - REF_PRODUIT
+  - TYPE_FIBRE
+  - NB_FIBRE_UTIL
+  - NB_FIBRE_DISP
+  - STATUT
+  - PROPRIETAIRE
+  - GESTIONNAIRE
+  - TYPE_PROP
+  - LONGUEUR
   PTECH:
-    - CODE
-    - REF_PLAQUE
-    - TYPE
-    - NATURE
-    - HAUTEUR_APPUI
-    - TYPE_APPUI
-    - EFFORT_APPUI
-    - NB_BOITIERS
-    - STATUT
-    - PROPRIETAIRE
-    - GESTIONNAIRE
-    - ADRESSSE
-    - VILLE
-    - CODE_POSTAL
-    - X
-    - Y
+  - CODE
+  - REF_PLAQUE
+  - TYPE
+  - NATURE
+  - HAUTEUR_APPUI
+  - TYPE_APPUI
+  - EFFORT_APPUI
+  - NB_BOITIERS
+  - STATUT
+  - PROPRIETAIRE
+  - GESTIONNAIRE
+  - ADRESSSE
+  - VILLE
+  - CODE_POSTAL
+  - X
+  - Y
+  - NOM
   INFRASTRUCTURE:
-    - CODE
-    - REF_PLAQUE
-    - ORIGINE
-    - EXTREMITE
-    - COMPOSITION
-    - TYPE
-    - TYPE_LOG
-    - STATUT
-    - PROPRIETAIRE
-    - GESTIONNAIRE
-    - LONGUEUR
+  - CODE
+  - REF_PLAQUE
+  - ORIGINE
+  - EXTREMITE
+  - COMPOSITION
+  - TYPE
+  - TYPE_LOG
+  - STATUT
+  - PROPRIETAIRE
+  - GESTIONNAIRE
+  - LONGUEUR
   ZPM:
-    - CODE
-    - REF_PLAQUE
-    - REF_NRO
-    - REF_SRO
-    - STATUT
-    - NB_PRISES
+  - CODE
+  - REF_PLAQUE
+  - REF_NRO
+  - REF_SRO
+  - STATUT
+  - NB_PRISES
   ZNRO:
-    - CODE
-    - REF_PLAQUE
-    - REF_NRO
-    - STATUT
-    - NB_PRISES
+  - CODE
+  - REF_PLAQUE
+  - REF_NRO
+  - STATUT
+  - NB_PRISES
   SITE:
-    - CODE
-    - REF_PLAQUE
-    - REF_NRO
-    - TYPE
-    - FABRIQUANT
-    - REF_PRODUIT
-    - MODE_POSE
-    - STATUT
-    - PROPRIETAIRE
-    - GESTIONNAIRE
-    - ADRESSSE
-    - COMMUNE
-    - CODE_POSTAL
-    - X
-    - Y
-
-# ===================== CSV 域值校验 =====================
+  - CODE
+  - REF_PLAQUE
+  - REF_NRO
+  - TYPE
+  - FABRIQUANT
+  - REF_PRODUIT
+  - MODE_POSE
+  - STATUT
+  - PROPRIETAIRE
+  - GESTIONNAIRE
+  - ADRESSSE
+  - COMMUNE
+  - CODE_POSTAL
+  - X
+  - Y
 csv_validation:
-  - csv_file: "l_cable_type.csv"
-    target_layer: "CABLE"
-    target_field: "TYPE_CABLE"
-  - csv_file: "l_fibre_type.csv"
-    target_layer: "CABLE"
-    target_field: "TYPE_FIBRE"
-  - csv_file: "l_statut.csv"
-    target_layer: "*"
-    target_field: "STATUT"
-  - csv_file: "Type boite.csv"
-    target_layer: "BOITE"
-    target_field: "TYPE"
-  - csv_file: "l_ptc_type.csv"
-    target_layer: "PTECH"
-    target_field: "TYPE"
-
-# ===================== 容差配置 =====================
+- csv_file: l_cable_type.csv
+  target_layer: CABLE
+  target_field: TYPE_CABLE
+- csv_file: l_fibre_type.csv
+  target_layer: CABLE
+  target_field: TYPE_FIBRE
+- csv_file: l_statut.csv
+  target_layer: '*'
+  target_field: STATUT
+- csv_file: Type boite.csv
+  target_layer: BOITE
+  target_field: TYPE
+- csv_file: l_ptc_type.csv
+  target_layer: PTECH
+  target_field: TYPE
 tolerances:
-  endpoint_on_device: 0.5   # 米
-  isolated_endpoint: 100.0  # 米
-  min_object_distance: 0.5  # 米
-  cable_device_match: 0.5   # 米
+  endpoint_on_device: 0.5
+  isolated_endpoint: 100.0
+  min_object_distance: 0.5
+  cable_device_match: 0.5

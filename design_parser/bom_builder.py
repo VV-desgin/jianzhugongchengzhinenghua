@@ -28,6 +28,10 @@ MAT_HANGER = "200000185"        # 电缆吊架/固定夹板/挂钩
 MAT_STEEL_WIRE = "200001033"    # 6mm 钢绞线（M，架空光缆）
 MAT_TEST = "500002107"          # OTDR & OPM 测试（按光箱/接头点数）
 MAT_PERMIT = "500002155"        # RT/RW 许可（M，长度口径）
+MAT_PROJECT_MGMT = "500001887"  # 项目管理（全局 1/项目）
+MAT_WAREHOUSE = "500001853"     # 仓储管理（全局 1/项目）
+MAT_SURVEY = "500001519"        # 勘察设计（全局 1/项目）
+MAT_ASBUILT = "500002108"       # 竣工图A1（全局 1/项目）
 
 # 官方映射表：设计对象 → 对应工序（组委会材料需求清单/映射表口径）
 _MATERIAL_PROCESS = {
@@ -70,6 +74,10 @@ _MATERIAL_NAMES = {
     MAT_STEEL_WIRE: ("6mm钢绞线", "M"),
     MAT_TEST: ("OTDR & OPM测试", "PC"),
     MAT_PERMIT: ("RT/RW许可", "M"),
+    MAT_PROJECT_MGMT: ("项目管理", "M"),
+    MAT_WAREHOUSE: ("仓储管理", "PC"),
+    MAT_SURVEY: ("勘察与设计", "M"),
+    MAT_ASBUILT: ("竣工图A1", "PC"),
 }
 
 
@@ -174,6 +182,10 @@ def build_bom(engineering_data: dict, params: dict = None) -> dict:
     # 全局工程固定项（每项目 1 次）
     add(MAT_SAFETY, 1.0, {}, "项目整体", "每项目1次")
     add(MAT_MOBILIZE, 1.0, {}, "项目整体", "每项目1次")
+    add(MAT_PROJECT_MGMT, 1.0, {}, "项目整体", "每项目1次")
+    add(MAT_WAREHOUSE, 1.0, {}, "项目整体", "每项目1次")
+    add(MAT_SURVEY, 1.0, {}, "项目整体", "每项目1次")
+    add(MAT_ASBUILT, 1.0, {}, "项目整体", "每项目1次")
 
     # 光缆：净量=各缆 longueur 之和（KM）
     total_cable_km = sum(_num(c.get("longueur")) for c in cables)
