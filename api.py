@@ -1484,6 +1484,27 @@ async def data_pipeline(
                             error_description=f"规则执行出错: {e}"
                         ))
 
+                # R-GIS / R-SAFE 专用模块并入主流程（空间/安全规则，结果进 review.issues 供 Dify 消费）
+                if has_gis:
+                    try:
+                        from design_parser.gis_rules import run_gis_checks
+                        from design_parser.safety_rules import run_safety_checks
+                        _sev_map = {"致命": "fatal", "高": "error", "中": "warning"}
+                        for mod_issues in (run_gis_checks(proj)["issues"], run_safety_checks(proj)["issues"]):
+                            for iss in mod_issues:
+                                all_results.append(CheckResult(
+                                    check_object=str(iss.get("object_type") or ""),
+                                    passed=False,
+                                    problem_location=str(iss.get("object_id") or ""),
+                                    actual_value="",
+                                    expected_value="",
+                                    rule_id=str(iss.get("rule_id") or ""),
+                                    error_description=str(iss.get("message") or ""),
+                                    severity=_sev_map.get(str(iss.get("severity") or ""), "warning"),
+                                ))
+                    except Exception:
+                        pass
+
                 # 严重等级按官方知识库v2.0 对齐（SEVERITY_MAP：致命/高/中 → fatal/error/warning）
                 _normalize_severities(all_results)
                 review_results_out = [CheckResultOut(**r.model_dump()).model_dump() for r in all_results]
