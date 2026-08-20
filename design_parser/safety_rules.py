@@ -5,6 +5,9 @@
 - R-SAFE-002 架空光缆跨越公路最低离地高度 >= 7m
 - R-SAFE-003 光缆与电力线交越垂直净距（10KV 以下：有防雷保护 2m/无 4m；35KV~110KV：3m/5m）
 - R-SAFE-004~009 墙壁光缆与其他管线最小间距（平行/交叉，按配置的净距表）
+- R-SAFE-010 直埋光缆与其他地下设施最小净距（YD/T 5102-2024 表7）
+- R-SAFE-011 杆路与其他设施最小水平净距（YD/T 5102-2024 表10）
+- R-SAFE-012 架空吊线防雷接地间距（GB 51158-2015 6.4.10）
 
 说明：
 - 高度类检查（001/002/003）依赖三维坐标（Z 值）；二维数据无法判定时跳过并记入 skipped。
@@ -272,11 +275,166 @@ def check_utility_clearances(proj, cfg: dict) -> tuple:
     return issues, skipped
 
 
+
+def _find_layer_by_keywords(proj, keywords):
+    """按关键词匹配图层并返回要素列表。"""
+    feats = []
+    for key, fs in proj.layers.items():
+        upper = key.upper()
+        if any(k.upper() in upper for k in keywords):
+            feats.extend(fs)
+    return feats
+
+
+def check_direct_buried_clearance(proj, cfg: dict) -> tuple:
+    """R-SAFE-010：直埋光缆与其他地下设施最小净距（YD/T 5102-2024 表7）。"""
+    issues, skipped = [], []
+    _, cables = _layer(proj, "CABLE")
+    table = cfg.get("direct_buried_clearances_m") or {}
+    buried_cables = []
+    for cable in cables:
+        mode = (_prop(cable, "MODE_POSE", "MODE_POSE") or "").upper()
+        if any(k in mode for k in ("SOUTERRAIN", "直埋", "BURIED", "UNDERGROUND")):
+            buried_cables.append(cable)
+    if not buried_cables:
+        skipped.append("直埋净距检查：无直埋/地下敷设光缆（MODE_POSE 含 SOUTERRAIN/直埋）")
+        return issues, skipped
+    # 地下设施关键词（扩展 utility_layer_keywords）
+    kw = cfg.get("utility_layer_keywords", {})
+    facility_map = {
+        "duct_pipe": kw.get("通信管道", ["通信管道", "DUCT"]),
+        "power_cable": kw.get("电力线", ["电力", "POWER", "ELEC"]),
+        "water_pipe": kw.get("给水管", ["给水", "WATER", "EAU"]),
+        "gas_pipe": kw.get("燃气管", ["燃气", "GAS", "GAZ"]),
+        "heat_drain": kw.get("热力管", ["热力", "HEAT", "CHALEUR"]) + kw.get("排水管", ["排水", "DRAIN"]),
+    }
+    found_any = False
+    for cable in buried_cables:
+        g1 = cable._geometry
+        if g1 is None:
+            continue
+        code = _prop(cable, "CODE") or ""
+        for key, specs in table.items():
+            if key in ("note",) or not isinstance(specs, dict):
+                continue
+            # 前缀匹配：water_pipe_lt300 → water_pipe
+            prefix = key.split("_")[0] + "_" + key.split("_")[1] if "_" in key else key
+            kws = facility_map.get(prefix)
+            if not kws:
+                # 兼容直接 key（如 duct_pipe）
+                kws = facility_map.get(key)
+            if not kws:
+                continue
+            feats = _find_layer_by_keywords(proj, kws)
+            if not feats:
+                continue
+            found_any = True
+            parallel_m = specs.get("parallel")
+            for ufeat in feats:
+                g2 = ufeat._geometry
+                if g2 is None:
+                    continue
+                try:
+                    inter = g1.intersection(g2)
+                    crossing = not inter.is_empty and inter.geom_type in ("Point", "MultiPoint")
+                except Exception:
+                    crossing = False
+                if crossing:
+                    continue  # 交叉场景数据缺失 Z 值时无法判定，跳过（平行规则为主）
+                if parallel_m is None:
+                    continue
+                d = _min_line_distance_m(g1, g2, cable.original_crs)
+                if d is not None and d < parallel_m:
+                    issues.append(_issue("R-SAFE-010", "CABLE", code,
+                                         f"直埋光缆 {code} 与 {key} 平行净距 {d:.3f}m 低于要求 {parallel_m}m"))
+    if not found_any:
+        skipped.append("直埋净距检查：工程数据无地下设施图层（给水管/燃气管/电力电缆等）")
+    return issues, skipped
+
+
+def check_pole_horizontal_clearance(proj, cfg: dict) -> tuple:
+    """R-SAFE-011：杆路与其他设施最小水平净距（YD/T 5102-2024 表10）。"""
+    issues, skipped = [], []
+    _, poles = _layer(proj, "PTECH")
+    if not poles:
+        skipped.append("杆路净距检查：无 PTECH（电杆）图层")
+        return issues, skipped
+    table = cfg.get("pole_horizontal_clearances_m") or {}
+    kw = cfg.get("utility_layer_keywords", {})
+    facility_map = {
+        "tree_city": kw.get("树木", ["树木", "TREE", "ARBRE"]),
+        "building": kw.get("建筑", ["建筑", "BUILDING", "BATIMENT"]),
+        "fire_hydrant": kw.get("消火栓", ["消火栓", "HYDRANT"]),
+    }
+    found_any = False
+    for pole in poles:
+        g1 = pole._geometry
+        if g1 is None:
+            continue
+        code = _prop(pole, "CODE") or ""
+        for key, limit in table.items():
+            if key in ("note",) or isinstance(limit, list) or isinstance(limit, str):
+                continue
+            kws = facility_map.get(key)
+            if not kws:
+                continue
+            feats = _find_layer_by_keywords(proj, kws)
+            if not feats:
+                continue
+            found_any = True
+            for ufeat in feats:
+                g2 = ufeat._geometry
+                if g2 is None:
+                    continue
+                d = _min_line_distance_m(g1, g2, pole.original_crs)
+                if d is not None and d < limit:
+                    issues.append(_issue("R-SAFE-011", "PTECH", code,
+                                         f"电杆 {code} 与 {key} 水平净距 {d:.3f}m 低于要求 {limit}m"))
+    if not found_any:
+        skipped.append("杆路净距检查：工程数据无树木/建筑/消火栓等设施图层")
+    return issues, skipped
+
+
+def check_lightning_grounding(proj, cfg: dict) -> tuple:
+    """R-SAFE-012：架空吊线防雷接地间距（GB 51158-2015 6.4.10：300~500m 接地、1km 绝缘子断开）。"""
+    issues, skipped = [], []
+    _, cables = _layer(proj, "CABLE")
+    lcfg = cfg.get("lightning_grounding") or {}
+    if not lcfg:
+        skipped.append("防雷检查：无 lightning_grounding 配置")
+        return issues, skipped
+    interval = lcfg.get("messenger_wire_grounding_interval_m") or [300, 500]
+    low, high = interval
+    found = False
+    for cable in cables:
+        props = cable.properties or {}
+        length = props.get("longueur") or props.get("LONGUEUR")
+        try:
+            length_m = float(length)
+        except (TypeError, ValueError):
+            continue
+        mode = (_prop(cable, "MODE_POSE", "MODE_POSE") or "").upper()
+        if not any(k in mode for k in ("AERIEN", "架空", "AERIAL")):
+            continue
+        found = True
+        # 长度超过接地间隔上限且无接地字段 → 提示需人工确认（工程数据一般无接地记录）
+        grounding = (_prop(cable, "GROUNDING", "MISE_A_TERRE", "接地") or "").upper()
+        has_gnd = any(k in grounding for k in ("OUI", "YES", "1", "有"))
+        if length_m > high and not has_gnd:
+            issues.append(_issue("R-SAFE-012", "CABLE", _prop(cable, "CODE") or "",
+                                 f"架空光缆 {_prop(cable, 'CODE') or ''} 长度 {length_m:.0f}m 超过吊线接地间隔上限 {high}m"
+                                 f"（GB 51158 6.4.10 要求每 {low}~{high}m 接地），工程数据无接地记录，需人工确认"))
+    if not found:
+        skipped.append("防雷检查：无架空（AERIEN/架空）光缆数据")
+    return issues, skipped
+
 def run_safety_checks(proj, config_path: Optional[Path] = None) -> Dict[str, Any]:
     """运行全部安全距离检查。"""
     cfg = _load_config(config_path)
     issues, skipped = [], []
-    for fn in (check_ground_height, check_power_crossing, check_utility_clearances):
+    for fn in (check_ground_height, check_power_crossing, check_utility_clearances,
+               check_direct_buried_clearance, check_pole_horizontal_clearance,
+               check_lightning_grounding):
         iss, skp = fn(proj, cfg)
         issues.extend(iss)
         skipped.extend(skp)

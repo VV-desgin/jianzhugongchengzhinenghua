@@ -11,6 +11,7 @@ import difflib
 import asyncio
 import time
 from collections import defaultdict
+from urllib.parse import urlparse
 from pathlib import Path
 from typing import Dict, Optional, List
 
@@ -137,7 +138,10 @@ app = FastAPI(title="通信设计审查 Agent 工具", version="0.3.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origin_regex=(
+        r"http://(localhost|127\.0\.0\.1)(:\d+)?"
+        r"|http://(118\.31\.127\.213|43\.138\.167\.41)(:\d+)?"
+    ),
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -245,6 +249,55 @@ def _store_project(project_id: str, proj) -> None:
                 pass
             logger.info(f"清理过期项目: {pid}")
 
+
+
+# 内网/保留地址前缀（SSRF 防护）
+_SAFE_FETCH_MAX_BYTES = 200 * 1024 * 1024  # 200MB
+
+
+def _is_private_ip(host: str) -> bool:
+    import ipaddress
+    try:
+        ip = ipaddress.ip_address(host.split("%")[0])
+    except ValueError:
+        return True
+    return (ip.is_private or ip.is_loopback or ip.is_link_local
+            or ip.is_reserved or ip.is_multicast or ip.is_unspecified)
+
+
+def _safe_fetch_url(url: str, max_bytes: int = _SAFE_FETCH_MAX_BYTES) -> bytes:
+    """校验协议/主机并流式下载（限制大小），防 SSRF 与内存 DoS。"""
+    if not url.startswith(("http://", "https://")):
+        raise HTTPException(400, "file_url 仅支持 http/https 协议")
+    parsed = urlparse(url)
+    if not parsed.hostname:
+        raise HTTPException(400, "file_url 主机无效")
+    host = parsed.hostname
+    if host in ("localhost", "127.0.0.1", "::1"):
+        raise HTTPException(400, "file_url 禁止访问本机/内网地址")
+    try:
+        import socket
+        for info in socket.getaddrinfo(host, None):
+            if _is_private_ip(info[4][0]):
+                raise HTTPException(400, "file_url 禁止访问内网/保留地址")
+    except HTTPException:
+        raise
+    except Exception:
+        pass
+    import asyncio
+    async def _dl():
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+            async with client.stream("GET", url) as resp:
+                resp.raise_for_status()
+                chunks = []
+                total = 0
+                async for chunk in resp.aiter_bytes():
+                    total += len(chunk)
+                    if total > max_bytes:
+                        raise HTTPException(413, f"file_url 下载超过大小上限 {max_bytes // (1024*1024)}MB")
+                    chunks.append(chunk)
+                return b"".join(chunks)
+    return asyncio.run(_dl())
 
 def build_response(data=None, success=True, error=None):
     return ApiResponse(success=success, data=data, error=error).model_dump()
@@ -957,14 +1010,13 @@ async def full_pipeline(
         suffix = Path(original_filename).suffix
     elif file_url is not None:
         try:
-            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
-                resp = await client.get(file_url)
-                resp.raise_for_status()
-                content = resp.content
-                original_filename = file_url.rstrip("/").split("/")[-1]
-                if not original_filename or "." not in original_filename:
-                    original_filename = "downloaded_file.zip"
-                suffix = Path(original_filename).suffix
+            content = _safe_fetch_url(file_url)
+            original_filename = file_url.rstrip("/").split("/")[-1]
+            if not original_filename or "." not in original_filename:
+                original_filename = "downloaded_file.zip"
+            suffix = Path(original_filename).suffix
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(400, f"下载文件失败: {e}")
     else:
@@ -1162,14 +1214,13 @@ async def auto_review(
         suffix = Path(original_filename).suffix
     elif file_url is not None:
         try:
-            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
-                resp = await client.get(file_url)
-                resp.raise_for_status()
-                content = resp.content
-                original_filename = file_url.rstrip("/").split("/")[-1]
-                if not original_filename or "." not in original_filename:
-                    original_filename = "downloaded_file.zip"
-                suffix = Path(original_filename).suffix
+            content = _safe_fetch_url(file_url)
+            original_filename = file_url.rstrip("/").split("/")[-1]
+            if not original_filename or "." not in original_filename:
+                original_filename = "downloaded_file.zip"
+            suffix = Path(original_filename).suffix
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(400, f"下载文件失败: {e}")
     else:
@@ -1281,14 +1332,13 @@ async def data_pipeline(
         suffix = Path(original_filename).suffix
     elif file_url is not None:
         try:
-            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
-                resp = await client.get(file_url)
-                resp.raise_for_status()
-                content = resp.content
-                original_filename = file_url.rstrip("/").split("/")[-1]
-                if not original_filename or "." not in original_filename:
-                    original_filename = "downloaded_file.zip"
-                suffix = Path(original_filename).suffix
+            content = _safe_fetch_url(file_url)
+            original_filename = file_url.rstrip("/").split("/")[-1]
+            if not original_filename or "." not in original_filename:
+                original_filename = "downloaded_file.zip"
+            suffix = Path(original_filename).suffix
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(400, f"下载文件失败: {e}")
     else:
@@ -1596,14 +1646,13 @@ async def orchestrate(
         suffix = Path(original_filename).suffix
     elif file_url is not None:
         try:
-            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
-                resp = await client.get(file_url)
-                resp.raise_for_status()
-                content = resp.content
-                original_filename = file_url.rstrip("/").split("/")[-1]
-                if not original_filename or "." not in original_filename:
-                    original_filename = "downloaded_file.zip"
-                suffix = Path(original_filename).suffix
+            content = _safe_fetch_url(file_url)
+            original_filename = file_url.rstrip("/").split("/")[-1]
+            if not original_filename or "." not in original_filename:
+                original_filename = "downloaded_file.zip"
+            suffix = Path(original_filename).suffix
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(400, f"下载文件失败: {e}")
     else:
