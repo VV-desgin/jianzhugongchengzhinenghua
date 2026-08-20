@@ -25,8 +25,8 @@ def test_config_values_from_material():
     assert cfg["wall_cable"]["min_ground_height_m"] == 4.5
     assert cfg["aerial_cable"]["road_crossing_min_ground_height_m"] == 5.5
     assert cfg["wall_cable_clearances_mm"]["避雷线接地引线"] == {"parallel_mm": 1000, "crossing_mm": 300}
-    assert cfg["wall_cable_clearances_mm"]["电力线"] == {"parallel_mm": 150, "crossing_mm": 50}
-    assert cfg["wall_cable_clearances_mm"]["热力管"] == {"parallel_mm": 500, "crossing_mm": 500}
+    assert cfg["wall_cable_clearances_mm"]["电力线"] == {"parallel_mm": 200, "crossing_mm": 100}
+    assert cfg["wall_cable_clearances_mm"]["热力管"] == {"parallel_mm": 500, "crossing_mm": 300}
     assert cfg["power_line_crossing_vertical_m"]["10kv_below"]["without_lightning_protection"] == 4.0
 
 
@@ -106,3 +106,40 @@ def test_safety_check_endpoint_shape(client):
     data = body["data"]
     assert data["total"] == 0
     assert "issues" in data and "skipped" in data and "source" in data
+
+
+def test_direct_buried_clearance():
+    """R-SAFE-010：直埋光缆与地下设施平行净距（YD/T 5102-2024 表7）。"""
+    buried = _feat("CABLE", 0, LineString([(0, 0), (0.01, 0)]),
+                   {"CODE": "B-1", "MODE_POSE": "SOUTERRAIN"})
+    water_near = _feat("WATER", 0, LineString([(0, 0.000002), (0.01, 0.000002)]),
+                       {"CODE": "W-1"})  # ~0.2m < 0.5m 给水管平行净距
+    data = run_safety_checks(_proj({"CABLE": [buried], "WATER": [water_near]}))
+    assert any(i["rule_id"] == "R-SAFE-010" for i in data["issues"])
+
+    water_far = _feat("WATER", 0, LineString([(0, 0.00002), (0.01, 0.00002)]),
+                      {"CODE": "W-2"})  # ~1m > 0.5m 达标
+    data2 = run_safety_checks(_proj({"CABLE": [buried], "WATER": [water_far]}))
+    assert not any(i["rule_id"] == "R-SAFE-010" for i in data2["issues"])
+
+
+def test_pole_horizontal_clearance():
+    """R-SAFE-011：电杆与树木水平净距（YD/T 5102-2024 表10：市区树木 0.5m）。"""
+    pole = _feat("PTECH", 0, LineString([(0, 0), (0.01, 0)]), {"CODE": "P-1"})
+    tree_near = _feat("TREE", 0, LineString([(0.000002, 0), (0.000003, 0)]),
+                      {"CODE": "T-1"})  # ~0.2m < 0.5m
+    data = run_safety_checks(_proj({"PTECH": [pole], "TREE": [tree_near]}))
+    assert any(i["rule_id"] == "R-SAFE-011" for i in data["issues"])
+
+
+def test_lightning_grounding_long_aerial():
+    """R-SAFE-012：架空光缆长度超过接地间隔且无接地记录 → 提示人工确认。"""
+    long_aerial = _feat("CABLE", 0, LineString([(0, 0), (0, 0.01)]),
+                        {"CODE": "C-LONG", "MODE_POSE": "AERIEN", "longueur": 1200})
+    data = run_safety_checks(_proj({"CABLE": [long_aerial]}))
+    assert any(i["rule_id"] == "R-SAFE-012" for i in data["issues"])
+
+    grounded = _feat("CABLE", 0, LineString([(0, 0), (0, 0.01)]),
+                     {"CODE": "C-GND", "MODE_POSE": "AERIEN", "longueur": 1200, "GROUNDING": "OUI"})
+    data2 = run_safety_checks(_proj({"CABLE": [grounded]}))
+    assert not any(i["rule_id"] == "R-SAFE-012" for i in data2["issues"])

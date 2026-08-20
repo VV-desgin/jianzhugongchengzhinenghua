@@ -2,7 +2,8 @@
   "source": "依据 YD/T 5102-2024《通信线路工程技术规范》表7/10/11/12、GB 51158-2015 表6.2.14/6.4.8、GB 50373-2019 表4.0.4（2026-08-19 条款级核对后更新）",
   "wall_cable": {
     "min_ground_height_m": 4.5,
-    "note": "墙壁光缆跨越街坊、院落时最低距地面不小于4.5米（YD/T 5102-2024 表11 街道平行值）"
+    "note": "墙壁光缆离地面高度不应小于3m（GB 51158-2015 6.4.14）；本配置取4.5m（偏严，参照街道平行值）",
+    "standard_min_m": 3.0
   },
   "aerial_cable": {
     "road_crossing_min_ground_height_m": 5.5,
@@ -53,25 +54,30 @@
       "crossing_mm": 300
     },
     "工作保护地线": {
-      "parallel_mm": 50,
-      "crossing_mm": 20
+      "parallel_mm": 500,
+      "crossing_mm": 200
     },
     "电力线": {
-      "parallel_mm": 150,
-      "crossing_mm": 50
+      "parallel_mm": 200,
+      "crossing_mm": 100
     },
     "给水管": {
       "parallel_mm": 150,
-      "crossing_mm": 20
+      "crossing_mm": 100
     },
-    "压缩空气管": {
-      "parallel_mm": 150,
-      "crossing_mm": 20
+    "燃气管": {
+      "parallel_mm": 300,
+      "crossing_mm": 100
     },
     "热力管": {
       "parallel_mm": 500,
-      "crossing_mm": 500
-    }
+      "crossing_mm": 300
+    },
+    "电缆线路": {
+      "parallel_mm": 150,
+      "crossing_mm": 100
+    },
+    "note": "依据 GB 51158-2015 表7.6.3（墙壁电缆与其他管线最小净距，墙壁光缆参照执行）"
   },
   "utility_layer_keywords": {
     "电力线": [
@@ -201,5 +207,14 @@
     "hv_line_500_750kv": 10.0,
     "hv_line_above_750kv": 13.0,
     "note": "依据 YD/T 5102-2024 表10（杆路与其他设施最小水平净距，500kV-750kV输电线路≥10m、750kV以上≥13m）"
+  },
+  "lightning_grounding": {
+    "messenger_wire_grounding_interval_m": [
+      300,
+      500
+    ],
+    "insulator_interval_m": 1000,
+    "hv_crossing_grounding": true,
+    "note": "依据 GB 51158-2015 6.4.10：光缆吊线每隔300m~500m利用电杆避雷线或拉线接地，每隔1km左右加装绝缘子电气断开；6.4.12：架空电力线下方交越时纵包绝缘+两侧加装接地装置"
   }
 }
