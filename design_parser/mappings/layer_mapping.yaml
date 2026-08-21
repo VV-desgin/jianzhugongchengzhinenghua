@@ -97,22 +97,22 @@ layers:
       REF_NRO: 50
       REF_PM: 50
       TYPE: 10
-      TYPE_STRUC: 30
+      TYPE_STRUC: 50
       MODE_POSE: 30
-      CAPACITE: 10
+      CAPACITE: 3
       NB_LOGEMEN: 10
-      NB_SPLICES: 10
-      NB_FIBRE_U: 10
+      NB_SPLICES: 5
+      NB_FIBRE_U: 3
       FABRIQUANT: 50
       REF_BPE: 50
-      NB_CASSETT: 10
+      NB_CASSETT: 3
       CABLE_AMON: 30
       STATUT: 50
       PROPRIETAI: 50
       GESTIONNAI: 50
       ADRESSSE: 50
       VILLE: 50
-      CODE_POSTA: 10
+      CODE_POSTA: 5
       X: 24
       Y: 24
       COMMENT: 50
@@ -201,20 +201,20 @@ layers:
       ORIGINE: 20
       EXTREMITE: 20
       TYPE_CABLE: 15
-      DIAMETRE: 10
+      DIAMETRE: 2
       MODE_POSE: 30
-      CAPACITE: 10
-      MODULO: 10
+      CAPACITE: 3
+      MODULO: 2
       FABRIQUANT: 50
       REF_PRODUI: 50
       TYPE_FIBRE: 10
-      NB_FIBRE_U: 10
-      NB_FIBRE_D: 10
+      NB_FIBRE_U: 3
+      NB_FIBRE_D: 3
       STATUT: 50
       PROPRIETAI: 50
       GESTIONNAI: 50
       TYPE_PROP: 30
-      LONGUEUR: 24
+      LONGUEUR: 10
       COMMENT: 50
   INFRASTRUCTURE:
     target_entity: Infrastructure
@@ -259,7 +259,7 @@ layers:
       STATUT: 50
       PROPRIETAI: 50
       GESTIONNAI: 50
-      LONGUEUR: 24
+      LONGUEUR: 10
       COMMENT: 50
   PTECH:
     target_entity: Box
@@ -286,13 +286,13 @@ layers:
       HAUTEUR_AP: 10
       TYPE_APPUI: 10
       EFFORT_APP: 10
-      NB_BOITIER: 10
+      NB_BOITIER: 2
       STATUT: 30
       PROPRIETAI: 50
       GESTIONNAI: 50
       ADRESSSE: 50
       VILLE: 50
-      CODE_POSTA: 10
+      CODE_POSTA: 5
       X: 24
       Y: 24
       COMMENT: 50
@@ -334,7 +334,7 @@ layers:
       RACCORDEME: 50
       STATUT: 50
       GESTION: 50
-      NUM_GESTIO: 11
+      NUM_GESTIO: 23
       NB_ETAGE: 2
       COL_MONTAN: 3
       SOUS_SOL: 3
@@ -371,7 +371,7 @@ layers:
       GESTIONNAI: 50
       ADRESSSE: 50
       COMMUNE: 50
-      CODE_POSTA: 10
+      CODE_POSTA: 5
       X: 24
       Y: 24
       COMMENT: 50
