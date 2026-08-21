@@ -2114,6 +2114,8 @@ def check_field_length(ctx: RuleContext) -> List[CheckResult]:
             for feat in features:
                 for field, max_len in field_lengths.items():
                     value = feat.properties.get(field)
+                    if isinstance(value, (int, float)):
+                        continue  # 数值列宽语义（DBF N(n,d)），不做字符串长度比较（防 float 全精度误报）
                     if _is_missing_sentinel(value):
                         continue
                     max_len = _override_max_len(field, max_len)
