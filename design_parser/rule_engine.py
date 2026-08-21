@@ -101,6 +101,7 @@ SEVERITY_MAP = {
     "R021": "error",  # R-FLD-001 必填字段非空
     "R022": "error",  # R-DAT-001 PBO设计覆盖容量
     "R-FIBER-001": "error",
+    "R-BOM-001": "error",  # 附表2 物料无法匹配（2026-08-22 决策：与 R-FIBER-001 一致）
 }
 
 OFFICIAL_LAYERS = {
