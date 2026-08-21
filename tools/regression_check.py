@@ -5,7 +5,7 @@
 - 场勘设计图.zip：survey_design，43/43/0，23 图层/244 对象
 - 赛题一.zip：full_design，287/57/230（8-16 R005_1 已按官方 R-REL-001 口径启用；8-20 R-GIS/R-SAFE 并入主流程后新增 R-GIS-004×2；规则分布精确一致），R008/R012/R021/R032=0
 - 赛题四-摩洛哥.rar：as_built，287/57/230（与赛题一同数据）
-- TC-01_正确工程案例.xlsx：Excel 工程包，109/8/98（warning 3：R-BOM-001×3），R007=1 R021=97 R-BOM-001=3，review_scope=non_spatial（P0-01 起 warning 不计入 failed_rules）
+- TC-01_正确工程案例.xlsx：Excel 工程包，109/8/101（R-BOM-001×3 已升 error，2026-08-22 决策），R007=1 R021=97 R-BOM-001=3，review_scope=non_spatial（P0-01 起 warning 不计入 failed_rules）
 
 > 2026-08-22 基线由 285/57/228 更新为 287/57/230：并入 R-GIS/R-SAFE 后赛题一/四新增 R-GIS-004×2（error，计入 failed）。
 
@@ -84,7 +84,7 @@ def main():
             rev = d.get("review") or {}
             rules = Counter(i.get("rule_id") for i in (rev.get("issues") or []))
             ok &= check("TC-01: Excel 工程包", (d.get("file_info") or {}).get("file_category") == "Excel 工程包")
-            ok &= check("TC-01: 109/8/98 warning=3", (rev.get("total_rules"), rev.get("passed_rules"), rev.get("failed_rules"), rev.get("warning_rules")) == (109, 8, 98, 3), str((rev.get("total_rules"), rev.get("passed_rules"), rev.get("failed_rules"), rev.get("warning_rules"))))
+            ok &= check("TC-01: 109/8/101 warning=0", (rev.get("total_rules"), rev.get("passed_rules"), rev.get("failed_rules"), rev.get("warning_rules")) == (109, 8, 101, 0), str((rev.get("total_rules"), rev.get("passed_rules"), rev.get("failed_rules"), rev.get("warning_rules"))))
             ok &= check("TC-01: R007=1 R021=97 R-BOM-001=3", rules.get("R007", 0) == 1 and rules.get("R021", 0) == 97 and rules.get("R-BOM-001", 0) == 3, str(dict(rules)))
             ok &= check("TC-01: non_spatial", d.get("review_scope") == "non_spatial")
         except FileNotFoundError as e:

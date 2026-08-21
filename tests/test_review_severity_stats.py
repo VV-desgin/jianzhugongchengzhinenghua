@@ -64,18 +64,18 @@ def test_severity_counts_mixed():
 def test_severity_map_normalization():
     results = [
         _r("R032", passed=False),      # 未配置 → warning
-        _r("R-BOM-001", passed=False), # 未配置 → warning
+        _r("R-BOM-001", passed=False), # SEVERITY_MAP → error（2026-08-22 决策）
         _r("R007", passed=False),      # SEVERITY_MAP → fatal
         _r("R008", passed=False),      # SEVERITY_MAP → error
     ]
     _normalize_severities(results)
     assert results[0].severity == "warning"
-    assert results[1].severity == "warning"
+    assert results[1].severity == "error"
     assert results[2].severity == "fatal"
     assert results[3].severity == "error"
     s = _severity_counts(results)
-    assert s["failed_rules"] == 2
-    assert s["warning_rules"] == 2
+    assert s["failed_rules"] == 3
+    assert s["warning_rules"] == 1
 
 
 def test_r032_length_warning_kept_not_failed():
@@ -117,3 +117,9 @@ def test_data_pipeline_review_results_carry_severity(client, upload_survey):
     assert review_results, "review_results 不应为空"
     for item in review_results:
         assert "severity" in item, f"review_results 缺少 severity: {item}"
+
+
+def test_r_bom_001_maps_to_error():
+    """附表2 R-BOM-001（物料无法匹配）按 error 计，与 R-FIBER-001 一致（2026-08-22 决策）。"""
+    from design_parser.rule_engine import SEVERITY_MAP
+    assert SEVERITY_MAP.get("R-BOM-001") == "error"
