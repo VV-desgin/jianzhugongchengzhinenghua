@@ -6,7 +6,7 @@ R005_1 按官方 R-REL-001（SITE.CODE=ZPM.CODE 双向一一对应）口径启�
 """
 from api import RULE_ROUTING
 
-ACTIVE = {"R005_1", "R005_3", "R027", "R028", "R033"}
+ACTIVE = {"R005_1", "R005_2", "R005_3", "R027", "R028", "R033"}
 GIS_CATS = ["完整设计图", "竣工图", "竣工图（含BOM）", "设计图（含纤芯）"]
 
 
