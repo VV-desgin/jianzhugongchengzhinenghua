@@ -22,3 +22,6 @@ wheels/
 dist/
 build/
 *.egg-info/
+
+# 计划执行台账（本地 scratch，git 历史与记忆文档为准）
+.superpowers/
