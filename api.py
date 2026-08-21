@@ -842,6 +842,15 @@ async def get_procedure_kb(project_id: str, keyword: Optional[str] = None):
     return build_response(data={"file": "", "entries": []})
 
 
+@app.get("/project/{project_id}/construction-kb", response_model=ApiResponse)
+async def get_construction_kb_endpoint(project_id: str, object_type: str = "", material_code: str = ""):
+    """施工指令素材（B6 后端素材版）：官方施工规程 PCP/工序 + 物料-工序映射表。"""
+    get_project(project_id)
+    from design_parser.construction_kb import get_construction_kb
+    data = get_construction_kb(object_type=object_type or "", material_code=material_code or "")
+    return build_response(data={"project_id": project_id, **data})
+
+
 @app.get("/project/{project_id}/gis-check", response_model=ApiResponse)
 async def get_gis_check(project_id: str, tolerance: float = 0.5):
     """GIS 空间检查（R-GIS-001~006）：范围重叠/包含/自环/端点重合，容差默认 0.5 米。"""
