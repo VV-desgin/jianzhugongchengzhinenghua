@@ -7,6 +7,8 @@ venv/
 # 测试缓存/过程文件
 .pytest_cache/
 测试记录/
+# 回归夹具的备份副本（仅本地回滚用）
+tests/data/regression/*_bak*.xlsx
 
 # 日志（含请求对账数据）
 api.log
