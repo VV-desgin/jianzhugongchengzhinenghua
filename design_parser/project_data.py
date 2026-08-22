@@ -850,6 +850,13 @@ class ProjectData:
                         except (TypeError, ValueError):
                             pass
                     item[out_field] = value
+                # 利旧标记兼容：STATUT/STATUS 值为 REUSE（评测 TC-12：CABLE.STATUT=REUSE）
+                if "reuse" not in item:
+                    for k in ("STATUT", "STATUS"):
+                        v = props.get(k)
+                        if v is not None and _normalize_reuse(v) == "yes":
+                            item["reuse"] = "yes"
+                            break
                 item["id"] = f"{obj_key}:{item.get('code', '')}"
                 result["objects"][obj_key].append(item)
         return result

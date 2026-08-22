@@ -138,3 +138,38 @@ def test_bom_nonstandard_box_type_unlisted_row():
     assert "HUAWEI-UNKNOWN-9999-X" in unknown[0]["计算方式"]
     box16 = next(it for it in result["bom_items"] if it["物料编码"] == "500002142")
     assert box16["设计数量"] == 1  # 只有标准 PBO 计入 16口光箱
+
+
+def test_bom_cable_reuse_deduction_all_reused():
+    """全部光缆 STATUT=REUSE（评测 TC-12）→ 新购光缆/钢绞线为 0，标待人工确认并注明利旧。"""
+    eng = _eng({
+        "cable": [
+            {"code": "CABLE-01", "longueur": 14.14, "statut": "REUSE", "capacite": 12},
+            {"code": "CABLE-02", "longueur": 14.14, "statut": "REUSE", "capacite": 12},
+        ],
+        "boite": [], "ptech": [], "site": [], "infrastructure": [],
+    })
+    result = build_bom(eng)
+    cable = next(it for it in result["bom_items"] if it["物料编码"] == "500002050")
+    steel = next(it for it in result["bom_items"] if it["物料编码"] == "200001033")
+    assert cable["设计数量"] == 0
+    assert cable["置信状态"] == "待人工确认"
+    assert "利旧冲减2条光缆（28.28KM）" in cable["计算方式"]
+    assert steel["设计数量"] == 0
+    assert steel["置信状态"] == "待人工确认"
+
+
+def test_bom_cable_reuse_deduction_partial():
+    """部分光缆利旧 → 新购只按非利旧光缆长度计算。"""
+    eng = _eng({
+        "cable": [
+            {"code": "CABLE-01", "longueur": 14.14, "statut": "REUSE", "capacite": 12},
+            {"code": "CABLE-02", "longueur": 5.0, "statut": "DEPLOYE", "capacite": 12},
+        ],
+        "boite": [], "ptech": [], "site": [], "infrastructure": [],
+    })
+    result = build_bom(eng)
+    cable = next(it for it in result["bom_items"] if it["物料编码"] == "500002050")
+    assert cable["设计数量"] == pytest.approx(5.0)
+    assert "利旧冲减1条光缆（14.14KM）" in cable["计算方式"]
+    assert cable["置信状态"] == "待人工确认"

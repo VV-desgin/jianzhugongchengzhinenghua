@@ -110,7 +110,11 @@ def _obj_field(obj: dict, *names) -> str:
 def _is_reuse(obj: dict, params: dict) -> bool:
     flag = params.get("reuse", {}).get("flag_field", "reuse")
     v = str(obj.get(flag) or obj.get("reuse") or "").strip().upper()
-    return v in ("YES", "Y", "OUI", "1", "TRUE", "利旧")
+    if v in ("YES", "Y", "OUI", "1", "TRUE", "利旧", "REUSE", "REUTILISE", "REUTILISATION"):
+        return True
+    # 兼容 STATUT/STATUS 值为 REUSE 的利旧标记（评测 TC-12：CABLE.STATUT=REUSE）
+    s = str(obj.get("statut") or obj.get("STATUT") or obj.get("status") or "").strip().upper()
+    return s in ("REUSE", "REUTILISE", "REUTILISATION", "利旧")
 
 
 def _pole_material(ptech: dict) -> str:
@@ -200,20 +204,25 @@ def build_bom(engineering_data: dict, params: dict = None) -> dict:
     add(MAT_SURVEY, 1.0, {}, "项目整体", "每项目1次")
     add(MAT_ASBUILT, 1.0, {}, "项目整体", "每项目1次")
 
-    # 光缆：净量=各缆 longueur 之和（KM）
-    total_cable_km = sum(_num(c.get("longueur")) for c in cables)
+    # 光缆：净量=新购缆 longueur 之和（KM）；利旧光缆不计入新购（评测 TC-12：CABLE.STATUT=REUSE；D04：只减新购不删工序）
+    reused_cables = [c for c in cables if _is_reuse(c, params)]
+    new_cables = [c for c in cables if not _is_reuse(c, params)]
+    total_cable_km = sum(_num(c.get("longueur")) for c in new_cables)
+    reused_km = sum(_num(c.get("longueur")) for c in reused_cables)
     n_splice = sum(1 for c in cables if _obj_field(c, "extremite", "EXTREMITE"))
     zero_len = [c for c in cables if _num(c.get("longueur")) <= 0]  # 长度零值/缺失（2026-08-23，评测 TC-14）
-    cable_confirm = "待人工确认" if zero_len else "自动匹配"
+    cable_confirm = "待人工确认" if (zero_len or reused_cables) else "自动匹配"
     cable_note = "光缆长度累加→损耗→预留→2KM/盘取整"
     if zero_len:
         cable_note += f"；{len(zero_len)}条光缆长度零值/缺失，数量待人工确认"
-    if total_cable_km > 0 or zero_len:
+    if reused_cables:
+        cable_note += f"；利旧冲减{len(reused_cables)}条光缆（{reused_km:.2f}KM），新购按{len(new_cables)}条计"
+    if total_cable_km > 0 or zero_len or reused_cables:
         # 弯曲增长按 YD/T 5102-2024 表4：默认管道 10‰（可扩展按敷设方式细分）
         counts = {"splice": n_splice, "pole": len(ptechs), "endpoint": len(boites) + 1,
                   "bend_permille": 10}
         add(MAT_CABLE, total_cable_km, counts, f"{len(cables)}条光缆", cable_note, confirm=cable_confirm)
-    if total_cable_km > 0 or zero_len:
+    if total_cable_km > 0 or zero_len or reused_cables:
         # 钢绞线：架空光缆配套，按光缆长度（M），500m/卷取整
         add(MAT_STEEL_WIRE, total_cable_km * 1000.0, {}, f"{len(cables)}条光缆",
             cable_note, unit="M", confirm=cable_confirm)
