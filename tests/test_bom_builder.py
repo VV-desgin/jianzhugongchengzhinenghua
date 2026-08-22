@@ -120,3 +120,21 @@ def test_fiber_assignments_no_layer():
     """无 CABLE 图层 → 空列表。"""
     ctx = _FakeCtx({"BOITE": []})
     assert build_fiber_assignments(ctx) == []
+
+
+def test_bom_nonstandard_box_type_unlisted_row():
+    """非标箱体类型（评测 TC-11）→ 输出未收录行待人工确认，不静默按 16口光箱计数。"""
+    eng = _eng({
+        "cable": [], "ptech": [], "site": [], "infrastructure": [],
+        "boite": [
+            {"code": "PBO-01", "type": "HUAWEI-UNKNOWN-9999-X", "capacite": 12},
+            {"code": "PBO-02", "type": "PBO", "capacite": 12},
+        ],
+    })
+    result = build_bom(eng)
+    unknown = [it for it in result["bom_items"] if it["物料编码"] == "未收录"]
+    assert len(unknown) == 1
+    assert unknown[0]["置信状态"] == "待人工确认"
+    assert "HUAWEI-UNKNOWN-9999-X" in unknown[0]["计算方式"]
+    box16 = next(it for it in result["bom_items"] if it["物料编码"] == "500002142")
+    assert box16["设计数量"] == 1  # 只有标准 PBO 计入 16口光箱

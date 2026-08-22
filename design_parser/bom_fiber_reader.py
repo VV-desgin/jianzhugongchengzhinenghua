@@ -349,3 +349,77 @@ def read_gpkg_rows(path: Path, limit: int = DEFAULT_ROW_LIMIT) -> Dict[str, Any]
             rows.append([_to_serializable(feat["properties"].get(f)) for f in fields])
         return {"file": path.name, "kind": "fiber", "sheet": src.name,
                 "headers": fields, "rows": rows}
+
+def collect_code_column(path: Path, sheet: Optional[str] = None,
+                        keywords: tuple = ("CODE", "编码"),
+                        max_codes: int = 0) -> set:
+    """流式全量扫描 Excel 编码列，返回去重编码集合（不截断行数，内存安全）。
+
+    - sheet 为 None 时读取第一个工作表（与 read_sheet_rows 语义一致）；
+    - 表头自动识别（兼容多级合并表头），编码列取第一个命中 keywords 的列；
+    - 空值/空白忽略；max_codes>0 时最多收集 max_codes 个去重码，防止异常文件撑爆内存。
+    """
+    max_codes = max(0, int(max_codes))
+    key = f"codes:{sheet}:{keywords}:{max_codes}"
+
+    def build() -> set:
+        codes: set = set()
+        header_rows: List[list] = []
+        header_idx = 0
+        scan_done = False
+        col = 0
+
+        def find_col(headers: list) -> int:
+            for i, h in enumerate(headers):
+                s = str(h).upper() if h is not None else ""
+                if any(k.upper() in s for k in keywords):
+                    return i
+            return 0
+
+        def feed(row: list) -> bool:
+            """处理一行，返回 True 表示已收集够可以提前结束。"""
+            nonlocal header_idx, scan_done, col
+            if not scan_done:
+                header_rows.append(row)
+                if len(header_rows) >= HEADER_SCAN_ROWS:
+                    header_idx = _detect_header_index(header_rows)
+                    col = find_col(header_rows[header_idx])
+                    scan_done = True
+                    for extra in header_rows[header_idx + 1:]:
+                        if feed(extra):
+                            return True
+                return False
+            v = row[col] if col < len(row) else None
+            if v is not None and str(v).strip():
+                codes.add(str(v).strip())
+            return bool(max_codes) and len(codes) >= max_codes
+
+        suffix = path.suffix.lower()
+        if suffix == ".xlsx":
+            from openpyxl import load_workbook
+            wb = load_workbook(path, read_only=True, data_only=True)
+            try:
+                ws = wb.worksheets[0] if not sheet else next((w for w in wb.worksheets if w.title == sheet), wb.worksheets[0])
+                for row in ws.iter_rows(values_only=True):
+                    if feed([_to_serializable(c) for c in row]):
+                        break
+            finally:
+                wb.close()
+        else:
+            import xlrd
+            wb = xlrd.open_workbook(str(path))
+            sh = wb.sheets()[0] if not sheet else next((s for s in wb.sheets() if s.name == sheet), wb.sheets()[0])
+            for r_idx in range(sh.nrows):
+                cells = [_to_serializable(sh.cell_value(r_idx, c)) for c in range(sh.ncols)]
+                if feed(cells):
+                    break
+        if not scan_done and header_rows:
+            header_idx = _detect_header_index(header_rows)
+            col = find_col(header_rows[header_idx])
+            for extra in header_rows[header_idx + 1:]:
+                if feed(extra):
+                    break
+        return codes
+
+    return _cached_file(path, key, build)
+

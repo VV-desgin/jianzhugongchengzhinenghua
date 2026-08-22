@@ -865,9 +865,8 @@ def _find_fiber_excel_sheets(ctx: RuleContext) -> Dict[str, Dict[str, Any]]:
 
 def _collect_material_codes(ctx: RuleContext) -> set:
     """从项目内 material_code_* / 物料编码 / 编码 文件中收集物料编码库。"""
-    from .bom_fiber_reader import EXCEL_EXTS, read_sheet_rows
+    from .bom_fiber_reader import EXCEL_EXTS, collect_code_column, list_sheet_names
     codes = set()
-    from .bom_fiber_reader import list_sheet_names
     for root in _project_roots(ctx):
         for f in root.rglob("*"):
             if not f.is_file() or f.suffix.lower() not in EXCEL_EXTS:
@@ -883,15 +882,12 @@ def _collect_material_codes(ctx: RuleContext) -> set:
             # 含 BOM物料 Sheet 的是被测案例文件，不是物料库（防自引用）
             if any(n.strip().upper() == "BOM物料" for n in names):
                 continue
-            try:
-                data = read_sheet_rows(f, limit=5000)
-            except Exception:
-                continue
-            headers = [str(h).upper() for h in data.get("headers", [])]
-            col = next((i for i, h in enumerate(headers) if "CODE" in h or "编码" in h), 0)
-            for row in data.get("rows", []):
-                if col < len(row) and row[col] is not None and str(row[col]).strip():
-                    codes.add(str(row[col]).strip())
+            # P1-1：全量扫描所有工作表编码列（不限 5000 行，深埋异常码不再漏检）
+            for n in names:
+                try:
+                    codes |= collect_code_column(f, sheet=n)
+                except Exception:
+                    continue
     return codes
 
 
@@ -902,17 +898,11 @@ def _load_official_material_codes() -> set:
     try:
         if not OFFICIAL_BOM_LIST_PATH.exists():
             return set()
-        from .bom_fiber_reader import list_sheet_names, read_sheet_rows
+        from .bom_fiber_reader import collect_code_column, list_sheet_names
         names = list_sheet_names(OFFICIAL_BOM_LIST_PATH)
         if not names:
             return set()
-        data = read_sheet_rows(OFFICIAL_BOM_LIST_PATH, sheet=names[0], limit=5000)
-        headers = [str(h).upper() for h in data.get("headers", [])]
-        col = next((i for i, h in enumerate(headers) if "CODE" in h or "编码" in h), 0)
-        codes = set()
-        for row in data.get("rows", []):
-            if col < len(row) and row[col] is not None and str(row[col]).strip():
-                codes.add(str(row[col]).strip())
+        codes = collect_code_column(OFFICIAL_BOM_LIST_PATH, sheet=names[0])
         return codes
     except Exception:
         return set()
@@ -929,7 +919,7 @@ DEFAULT_MATERIAL_CODES = {
 
 def _find_bom_excel_codes(ctx: RuleContext) -> list:
     """扫描包内被检查的 BOM 表（含“BOM物料”Sheet 或文件名含 bom_list 的文件），返回物料编码列。"""
-    from .bom_fiber_reader import EXCEL_EXTS, list_sheet_names, read_sheet_rows
+    from .bom_fiber_reader import EXCEL_EXTS, collect_code_column, list_sheet_names
     codes = []
     seen = set()
     for root in _project_roots(ctx):
@@ -956,17 +946,23 @@ def _find_bom_excel_codes(ctx: RuleContext) -> list:
                 continue
             for n in wanted:
                 try:
-                    data = read_sheet_rows(f, sheet=n, limit=5000)
+                    found = collect_code_column(f, sheet=n)  # P1-1：全量扫描，不限 5000 行
                 except Exception:
                     continue
-                if not data.get("headers"):
-                    continue
-                headers = [str(h).upper() for h in data["headers"]]
-                col = next((i for i, h in enumerate(headers) if "CODE" in h or "编码" in h), 0)
-                for row in data.get("rows", []):
-                    if col < len(row) and row[col] is not None and str(row[col]).strip():
-                        codes.append(str(row[col]).strip())
+                for code in sorted(found):
+                    if code not in codes:
+                        codes.append(code)
     return codes
+
+
+def _is_known_box_type(t: str) -> bool:
+    """官方 BOITE.TYPE 白名单（l_bpe_type: BPE/BPI/PBO），兼容 FDT/口数型。"""
+    s = (t or "").strip().upper()
+    if not s:
+        return True  # 空值由 R021 必填检查处理，不算非标
+    if any(k in s for k in ("PBO", "BPE", "BPI", "FDT", "口")):
+        return True
+    return False
 
 
 def check_bom_material_match(ctx: RuleContext) -> List[CheckResult]:
@@ -980,20 +976,34 @@ def check_bom_material_match(ctx: RuleContext) -> List[CheckResult]:
         bom_codes = [(feat.properties.get("CODE") or "").strip() for feat in ctx.layers[layer_name]]
     else:
         bom_codes = _find_bom_excel_codes(ctx)
-    if not bom_codes:
-        return results
-    library = _load_official_material_codes() or DEFAULT_MATERIAL_CODES  # 固定官方物料库：优先交付路径文件，内置码兜底
-    for code in bom_codes:
-        if code and code not in library:
+    if bom_codes:
+        library = _load_official_material_codes() or DEFAULT_MATERIAL_CODES  # 固定官方物料库：优先交付路径文件，内置码兜底
+        for code in bom_codes:
+            if code and code not in library:
+                results.append(CheckResult(
+                    check_object=f"BOM物料 {code}",
+                    passed=False,
+                    problem_location="物料编码",
+                    actual_value=code,
+                    expected_value="存在于物料编码库",
+                    rule_id="R-BOM-001",
+                    error_description=f"BOM 物料编码 '{code}' 不在已知物料编码库中",
+                    severity="error",  # P2-2：源码与 SEVERITY_MAP 对齐（2026-08-22 已按确认口径计 error）
+                ))
+    # 非标/未收录箱体类型拦截（官方 l_bpe_type：BPE/BPI/PBO；评测 TC-11）
+    for feat in ctx.layers.get("BOITE", []):
+        t = (feat.properties.get("TYPE") or "").strip()
+        if t and not _is_known_box_type(t):
+            code = (feat.properties.get("CODE") or "").strip()
             results.append(CheckResult(
-                check_object=f"BOM物料 {code}",
+                check_object=f"BOITE 要素 {code}",
                 passed=False,
-                problem_location="物料编码",
-                actual_value=code,
-                expected_value="存在于物料编码库",
+                problem_location="TYPE",
+                actual_value=t,
+                expected_value="BPE/BPI/PBO 等官方箱体类型",
                 rule_id="R-BOM-001",
-                error_description=f"BOM 物料编码 '{code}' 不在已知物料编码库中",
-                severity="warning",
+                error_description=f"非标/未收录箱体类型 '{t}' 不在官方物料类型库中，BOM 无法匹配物料",
+                severity="error",
             ))
     return results
 

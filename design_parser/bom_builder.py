@@ -9,6 +9,17 @@ from typing import Dict, List
 from .business_params import load_business_params
 from .bom_formula import compute_bom_quantity
 
+
+def _is_known_box_type(t: str) -> bool:
+    """官方 BOITE.TYPE 白名单（l_bpe_type: BPE/BPI/PBO），兼容 FDT/口数型。"""
+    s = (t or "").strip().upper()
+    if not s:
+        return True  # 空值按容量映射，不算非标
+    if any(k in s for k in ("PBO", "BPE", "BPI", "FDT", "口")):
+        return True
+    return False
+
+
 # 官方映射表核心物料（设计对象-物料-工序映射表）
 MAT_SAFETY = "500003800"        # 安全防护与准备（全局 1/项目）
 MAT_MOBILIZE = "500003890"      # 运输、进场与退场（全局 1/项目）
@@ -116,12 +127,14 @@ def _pole_material(ptech: dict) -> str:
 
 
 def _box_material(boite: dict) -> str:
-    """按容量映射箱体：容量≥72 → FDT(500002054)，否则 16口光箱(500002142)。"""
+    """按容量/类型映射箱体：容量≥72 或 FDT/72 → FDT(500002054)；标准类型 → 16口光箱(500002142)；非标类型返回 None（由 BOM 输出未收录行）。"""
     cap = _num(boite.get("capacite"))
     t = _obj_field(boite, "type", "TYPE")
     if cap >= 72 or "FDT" in t.upper() or "72" in t:
         return MAT_FDT_72
-    return MAT_BOX_16
+    if _is_known_box_type(t):
+        return MAT_BOX_16
+    return None
 
 
 def build_bom(engineering_data: dict, params: dict = None) -> dict:
@@ -223,8 +236,13 @@ def build_bom(engineering_data: dict, params: dict = None) -> dict:
     # 箱体：按容量映射 FDT/16口，利旧冲减
     box_groups: Dict[str, int] = {}
     box_reused: Dict[str, int] = {}
+    unknown_box_types: Dict[str, int] = {}
     for b in boites:
         m = _box_material(b)
+        if m is None:
+            t = (b.get("type") or "").strip() or "UNKNOWN"
+            unknown_box_types[t] = unknown_box_types.get(t, 0) + 1
+            continue
         box_groups[m] = box_groups.get(m, 0) + 1
         if _is_reuse(b, params):
             box_reused[m] = box_reused.get(m, 0) + 1
@@ -234,6 +252,9 @@ def build_bom(engineering_data: dict, params: dict = None) -> dict:
         note = f"设计{total}个" + (f"，利旧冲减{reused}个" if reused else "")
         confirm = "自动匹配" if reused == 0 else "待人工确认"
         add(m, new_qty, {}, f"{total}个箱体", note, confirm=confirm)
+    for t, n in unknown_box_types.items():
+        add("未收录", float(n), {}, f"{n}个非标箱体",
+            f"非标/未收录箱体类型 '{t}' 不在官方物料库，数量待人工确认", confirm="待人工确认")
 
     # 熔接：按接续点数（简化：每 PCP 4 芯熔接 + 直通，口径待官方确认）
     n_fdt = box_groups.get(MAT_FDT_72, 0)
