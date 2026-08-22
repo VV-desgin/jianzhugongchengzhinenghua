@@ -55,7 +55,7 @@
 ### 本地/云服务器
 - pytest 156 passed；回归门 14 项 ALL PASS；云服务器直测赛题四 review 287/57/230/0、R032=0、construction-kb 正常。
 
-### Dify PROD 全流程（黎俊杰 10 包，部署后实测，10/10 succeeded）
+### Dify PROD 全流程（测试方 10 包，部署后实测，10/10 succeeded）
 
 | 包 | review(总/过/败) | 说明 |
 |---|---|---|
