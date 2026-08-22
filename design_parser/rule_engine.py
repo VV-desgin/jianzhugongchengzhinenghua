@@ -2938,7 +2938,7 @@ def build_fiber_assignments(ctx: RuleContext) -> list:
 
     口径与 R-FIBER-002 一致：已用纤芯从 1 号芯起连续占用（官方 PCP 前 N 芯口径）。
     位置映射与纤芯工具一致：tube=(c-1)//cores_per_tube+1, core=(c-1)%cores_per_tube+1。
-    输出 [{cable_code, assigned:[{tube,fiber,core}]}]，纤芯工具 get_existing() 直接消费。
+    输出 [{cable_code, assigned:[{tube,fiber,core}]}]，供纤芯工具 get_existing() 读取。
     """
     layer = next((k for k in ctx.layers if "CABLE" in k.upper() and "TYPE" not in k.upper()), None)
     if layer is None:

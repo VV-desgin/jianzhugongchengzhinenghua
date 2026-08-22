@@ -1,6 +1,6 @@
 """BOM / 纤芯数据解析：统一读取 Excel 表格与 GPKG 矢量图层为结构化数据。
 
-供 BOM 生成、纤芯分配工作流消费。真实数据形态：
+用于 BOM 生成与纤芯分配工作流。真实数据形态：
 - BOM_LIST.xlsx / material_code_*.xls（BOM 物料清单与物料编码库）
 - SRO-*-TOPO_*.xlsx（纤芯拓扑表）
 - BOX / CABLE / SRO.gpkg（纤芯矢量图层）
@@ -422,4 +422,3 @@ def collect_code_column(path: Path, sheet: Optional[str] = None,
         return codes
 
     return _cached_file(path, key, build)
-

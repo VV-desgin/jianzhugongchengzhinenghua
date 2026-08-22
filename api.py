@@ -228,7 +228,7 @@ async def health():
 
 @app.get("/tf/{filename}")
 async def serve_test_file(filename: str):
-    """临时测试桥接：serve /tmp/tf 下的工程文件（供 Dify remote_url 下载，验证总控端到端）。"""
+    """临时测试桥接：提供 /tmp/tf 下的工程文件供 Dify remote_url 下载。"""
     base = Path("/tmp/tf")
     base_resolved = base.resolve()
     target = (base / filename).resolve()
@@ -239,7 +239,7 @@ async def serve_test_file(filename: str):
 
 @app.get("/agent/business-params", response_model=BusinessParamsOut)
 async def business_params():
-    """返回业务参数（损耗/预留/取整/利旧/纤芯/施工指令），供 Dify 工具节点消费。"""
+    """返回业务参数（损耗/预留/取整/利旧/纤芯/施工指令）。"""
     return build_response(success=True, data=load_business_params())
 
 
@@ -252,7 +252,7 @@ async def agent_bom(
 
     输入 project_id（已解析项目）或 engineering_data（含 objects）。
     输出 bom_items（设计/损耗/预留/最终数量/计算依据/置信状态）+ summary。
-    后端成为 BOM 权威数据源，不依赖 Dify BOM 工具 V0.6。
+    后端 BOM 计算，不再依赖 Dify BOM 工具 V0.6。
     """
     from design_parser.bom_builder import build_bom
     eng = None
@@ -360,7 +360,7 @@ def _count_cables(proj: ProjectData) -> int:
     return sum(len(feats) for name, feats in proj.layers.items() if "CABLE" in name.upper())
 
 def _collect_fiber_tables(proj, max_sheets=10, max_rows=200):
-    """收集包内纤芯相关 Excel 表（供 Dify 纤芯分配工具 V0.5 使用）。"""
+    """收集包内纤芯相关 Excel 表（供纤芯分配工具使用）。"""
     from design_parser.bom_fiber_reader import EXCEL_EXTS, list_sheet_names, read_sheet_rows
     import re
     out = []
@@ -920,7 +920,7 @@ async def get_safety_check(project_id: str):
 
 @app.get("/project/{project_id}/raw-file")
 async def get_raw_file(project_id: str, file: str):
-    """返回工程包内的原始文档文件（供下游 Agent 直接读取文档，如 xlsx/shp/pdf 等）。"""
+    """返回工程包内的原始文档文件（如 xlsx/shp/pdf），供下游读取。"""
     proj = get_project(project_id)
     target = Path(file).name  # 仅取文件名，防路径穿越
     roots = _project_roots(proj)
@@ -1381,7 +1381,7 @@ async def data_pipeline(
 ):
     """
     纯数据流水线：不经过 LLM，直接将解析与审查的结构化 JSON 返回。
-    供下游 Agent 直接消费。
+    供下游 Agent 读取。
 
     输出契约同时包含：
     - 新契约字段：success, project_name, project_type, summary, review, warnings, errors
@@ -1553,7 +1553,7 @@ async def data_pipeline(
                             error_description=f"规则执行出错: {e}"
                         ))
 
-                # R-GIS / R-SAFE 专用模块并入主流程（空间/安全规则，结果进 review.issues 供 Dify 消费）
+                # R-GIS / R-SAFE 专用模块并入主流程（空间/安全规则，结果并入 review.issues）
                 if has_gis:
                     try:
                         from design_parser.gis_rules import run_gis_checks

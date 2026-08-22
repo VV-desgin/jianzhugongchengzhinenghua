@@ -7,8 +7,8 @@
   Exemple / Type champ / Longueur champ / Format de saisie / Obligatoire O/C/N /
   Description de la condition / Contrainte de remplissage
 
-职责：把官方规则表解析为结构化数据，并转换成规则引擎可消费的
-可执行条件描述（check_type + object_type + field + params）。
+输出：结构化校验规则与图层字段说明，以及规则引擎可执行条件
+（check_type + object_type + field + params）。
 """
 from pathlib import Path
 from typing import List, Dict, Any, Optional
@@ -188,7 +188,7 @@ def _sheet_filenames(path: Path):
 
 def build_executable_rules(field_specs: Dict[str, list],
                            validation_rules: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """把字段说明与校验规则转换成规则引擎可消费的条件描述。"""
+    """生成规则引擎可执行条件描述（check_type/object_type/field/params）。"""
     out: List[Dict[str, Any]] = []
 
     # 1) 图层字段说明中的必填字段（Obligatoire=O）
