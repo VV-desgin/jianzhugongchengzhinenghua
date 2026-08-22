@@ -25,3 +25,19 @@ build/
 
 # 计划执行台账（本地 scratch，git 历史与记忆文档为准）
 .superpowers/
+
+# 本地保留、不入库（竞赛数据/真实样例/内部文档/含人名表格）
+docs/官方固定数据/
+tests/data/场勘设计图.zip
+场勘设计图_返回样例.json
+API_SAMPLES.md
+docs/09_记忆文档补写*.md
+docs/10_未做优化清单.md
+docs/14_工作进度与待办总结.md
+docs/15_未做项报告与规则对照.md
+docs/17_规则可用性验证_Dify实测.md
+docs/18_新窗口交接摘要.md
+docs/20_官方口径催办清单.md
+docs/22_生产安全加固建议.md
+docs/06_自定义业务规则基线_V1.0_更新版*.xlsx
+docs/09_知识库来源追溯与规则映射_更新版*.xlsx
