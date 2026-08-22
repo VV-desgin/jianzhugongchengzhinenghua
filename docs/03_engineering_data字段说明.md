@@ -2,7 +2,6 @@
 
 来源：design_parser/project_data.py ENGINEERING_OBJECTS + 赛题四实测
 
-> 说明：本文档兼作 P1 验收的 engineering_data 字段核对表。
 
 | 对象 | 输出字段 | 源字段映射（按序取首个非空） | 实测样例（赛题四） | 缺失时行为 | 实测核对结论 |
 |---|---|---|---|---|---|
