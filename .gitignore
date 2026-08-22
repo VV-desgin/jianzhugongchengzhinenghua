@@ -28,6 +28,11 @@ build/
 
 # 本地保留、不入库（竞赛数据/真实样例/内部文档/含人名表格）
 docs/官方固定数据/
+docs/deliverables_data.json
+docs/26_外部表格比对报告_知识库追溯与业务规则基线.md
+docs/27_表格更新依据说明.md
+docs/28_后端变更报告_GitHub上次上传版至当前.md
+docs/superpowers/
 tests/data/场勘设计图.zip
 场勘设计图_返回样例.json
 API_SAMPLES.md
