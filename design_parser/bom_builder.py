@@ -190,16 +190,20 @@ def build_bom(engineering_data: dict, params: dict = None) -> dict:
     # 光缆：净量=各缆 longueur 之和（KM）
     total_cable_km = sum(_num(c.get("longueur")) for c in cables)
     n_splice = sum(1 for c in cables if _obj_field(c, "extremite", "EXTREMITE"))
-    if total_cable_km > 0:
+    zero_len = [c for c in cables if _num(c.get("longueur")) <= 0]  # 长度零值/缺失（2026-08-23，评测 TC-14）
+    cable_confirm = "待人工确认" if zero_len else "自动匹配"
+    cable_note = "光缆长度累加→损耗→预留→2KM/盘取整"
+    if zero_len:
+        cable_note += f"；{len(zero_len)}条光缆长度零值/缺失，数量待人工确认"
+    if total_cable_km > 0 or zero_len:
         # 弯曲增长按 YD/T 5102-2024 表4：默认管道 10‰（可扩展按敷设方式细分）
         counts = {"splice": n_splice, "pole": len(ptechs), "endpoint": len(boites) + 1,
                   "bend_permille": 10}
-        add(MAT_CABLE, total_cable_km, counts, f"{len(cables)}条光缆",
-            "光缆长度累加→损耗→预留→2KM/盘取整")
-    if total_cable_km > 0:
+        add(MAT_CABLE, total_cable_km, counts, f"{len(cables)}条光缆", cable_note, confirm=cable_confirm)
+    if total_cable_km > 0 or zero_len:
         # 钢绞线：架空光缆配套，按光缆长度（M），500m/卷取整
         add(MAT_STEEL_WIRE, total_cable_km * 1000.0, {}, f"{len(cables)}条光缆",
-            "按光缆长度折算→500m/卷取整", unit="M")
+            cable_note, unit="M", confirm=cable_confirm)
 
     # 电杆：按高度/类型映射，利旧冲减（reuse=yes 不新建）
     pole_groups: Dict[str, int] = {}

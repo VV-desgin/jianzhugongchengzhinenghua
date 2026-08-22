@@ -331,6 +331,23 @@ def check_layer_geom_type(ctx: RuleContext, expected_types: Optional[Dict[str, s
     return results
 
 
+# 核心计算字段零值即视为缺失（如光缆/管道长度 LONGUEUR），0.0/负值 → R005 必填非空拦截（2026-08-23，评测 TC-14）
+ZERO_VALUE_MEANS_MISSING = {
+    "CABLE": {"LONGUEUR", "LGR_REELLE", "LGR_CARTO"},
+    "INFRASTRUCTURE": {"LONGUEUR"},
+}
+
+
+def _is_zero_or_negative(value) -> bool:
+    """核心计算字段零值/负值判定（0、0.0、'0'、'-1.5' 等视为缺失）。"""
+    if isinstance(value, bool):
+        return False
+    try:
+        return float(value) <= 0
+    except (TypeError, ValueError):
+        return False
+
+
 def check_required_fields(ctx: RuleContext, required_fields: Optional[Dict[str, List[str]]] = None) -> List[CheckResult]:
     if required_fields is None:
         required_fields = load_required_fields_config()
@@ -340,9 +357,11 @@ def check_required_fields(ctx: RuleContext, required_fields: Optional[Dict[str, 
     results = []
     for layer_name, features in ctx.layers.items():
         matched_fields = None
+        matched_cfg_key = ""
         for cfg_key, fields in required_fields.items():
             if cfg_key.upper() in layer_name.upper():
                 matched_fields = fields
+                matched_cfg_key = cfg_key
                 break
         if not matched_fields:
             continue
@@ -362,6 +381,16 @@ def check_required_fields(ctx: RuleContext, required_fields: Optional[Dict[str, 
                         expected_value="非空",
                         rule_id=RULE_IDS["REQUIRED_FIELD_EMPTY"],
                         error_description=f"必填字段 '{field}' 为空"
+                    ))
+                if field.upper() in ZERO_VALUE_MEANS_MISSING.get(matched_cfg_key.upper(), set()) and _is_zero_or_negative(value):
+                    results.append(CheckResult(
+                        check_object=f"{layer_name} 要素 {props.get('CODE', feat.feature_id)}",
+                        passed=False,
+                        problem_location=f"字段 {field}",
+                        actual_value=str(value),
+                        expected_value=">0（核心计算字段不允许零值/负值）",
+                        rule_id=RULE_IDS["REQUIRED_FIELD_EMPTY"],
+                        error_description=f"必填字段 '{field}' 为零值或负值（长度缺失）"
                     ))
     return results
 
