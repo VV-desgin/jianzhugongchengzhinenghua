@@ -80,6 +80,7 @@ python api.py
 ### Agent 接口（支持文件上传或 file_url）
 
 #### POST /agent/data-pipeline — 纯数据流水线（Dify 主接口）
+> 结果缓存（2026-08-22）：同一文件（SHA256）+ 参数 + 规则版本，1 小时内重复调用直接秒回（LRU 32 条 / 64MB 上限，规则变更自动失效）；首跑不变。
 
 上传工程包后返回固定结构 JSON：`success`、`project_id`、`project_name`、`project_type`、`layers`、`summary`、`review`、`warnings`、`errors`、`status`，可选参数 `include_tables=true` 时额外返回 `bom_tables`/`fiber_tables`（BOM 表与纤芯表清单，含前 50 行）；并保留 `file_info`、`review_results`、`serious_issues_detected`、`excel_data`、`pdf_text` 旧字段；新增 `engineering_data`（{project_id, project_type, objects} ，objects 包含 cable/boite/ptech）统一工程对象输出。
 响应含 `request_id`（请求对账 ID，同时写入服务日志，便于与 Dify 调用记录对账）。
