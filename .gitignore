@@ -15,7 +15,7 @@ api.log
 *.log
 
 # 工程记录/记忆文档（仅存本地，不上传）
-开发记忆文档.md
+DEVELOPMENT_MEMORY.md
 
 # 部署/构建产物
 wheels/
