@@ -2168,7 +2168,9 @@ def check_field_length(ctx: RuleContext) -> List[CheckResult]:
 
 
 def check_site_pm_zpm_bidirectional(ctx: RuleContext) -> List[CheckResult]:
-    """R005_1: SITE(TYPE=PM) 的 CODE 与 ZPM 的 CODE 双向一一对应检查"""
+    """R005_1: SITE(TYPE=PM) 与 ZPM 双向覆盖检查。
+    2026-08-22 双口径：同码（ZPM.CODE == SITE.CODE）或外键（ZPM.REF_PM == SITE.CODE）任一满足即通过；
+    依据官方校验规则 6.4/6.5（BOITE/CABLE.REF_PM = SITE.CODE = ZPM.CODE）。孤立语义不变。"""
     results = []
 
     site_pm_codes = set()
@@ -2181,41 +2183,53 @@ def check_site_pm_zpm_bidirectional(ctx: RuleContext) -> List[CheckResult]:
                         site_pm_codes.add(code)
             break
 
-    zpm_codes = set()
+    zpm_refs = []  # (CODE, REF_PM) 每个 ZPM 的两种关联写法
     for layer_name in ctx.layers:
         if 'ZPM' in layer_name.upper():
             for feat in ctx.layers[layer_name]:
-                code = feat.properties.get('CODE')
-                if code:
-                    zpm_codes.add(code)
+                props = feat.properties
+                code = str(props.get('CODE') or '').strip() or None
+                ref_pm = str(props.get('REF_PM') or '').strip() or None
+                if code or ref_pm:
+                    zpm_refs.append((code, ref_pm))
             break
 
-    if not site_pm_codes and not zpm_codes:
+    zpm_covered = set()  # 同码或外键两种方式覆盖到的 PM 编码集合
+    for code, ref_pm in zpm_refs:
+        if code:
+            zpm_covered.add(code)
+        if ref_pm:
+            zpm_covered.add(ref_pm)
+
+    if not site_pm_codes and not zpm_refs:
         return results
 
     for code in sorted(site_pm_codes):
-        if code not in zpm_codes:
+        if code not in zpm_covered:
             results.append(CheckResult(
                 check_object=f"SITE PM {code}",
                 passed=False,
                 problem_location="ZPM 图层",
-                actual_value="ZPM 中无对应 CODE",
-                expected_value=f"ZPM 中存在 CODE={code}",
+                actual_value="ZPM 中无同码或 REF_PM 对应",
+                expected_value="ZPM.CODE=PM 或 ZPM.REF_PM=PM",
                 rule_id="R005_1",
-                error_description=f"SITE 中 PM {code} 在 ZPM 图层中找不到对应的 CODE"
+                error_description=f"SITE 中 PM {code} 在 ZPM 图层中找不到对应的 CODE 或 REF_PM"
             ))
 
-    for code in sorted(zpm_codes):
-        if code not in site_pm_codes:
+    for code, ref_pm in zpm_refs:
+        label = code or ref_pm
+        hit = (code in site_pm_codes) or (ref_pm in site_pm_codes)
+        if not hit:
             results.append(CheckResult(
-                check_object=f"ZPM {code}",
+                check_object=f"ZPM {label}",
                 passed=False,
                 problem_location="SITE 图层",
-                actual_value="SITE 中无对应 TYPE=PM 的记录",
-                expected_value=f"SITE 中存在 TYPE=PM 且 CODE={code}",
+                actual_value=f"CODE={code} REF_PM={ref_pm} 均未命中",
+                expected_value="SITE(TYPE=PM).CODE 中存在对应值",
                 rule_id="R005_1",
-                error_description=f"ZPM 图层中 {code} 在 SITE(TYPE=PM) 中找不到对应的记录"
+                error_description=f"ZPM {label} 在 SITE(TYPE=PM) 中找不到对应的记录（CODE 或 REF_PM）"
             ))
+
 
     return results
 
