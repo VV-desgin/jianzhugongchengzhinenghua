@@ -4,8 +4,11 @@ from pathlib import Path
 from typing import Optional
 
 DEFAULT_BUSINESS_PARAMS = {
-    "_meta": {"source": "行业参考默认值，待官方确认",
-              "official_pending": ["D01", "D02", "D03", "D04", "D05", "D06", "D07"]},
+    "_meta": {"source": "行业标准设定（YD/T 5102-2024/GB 51158-2015/GB 50373-2019），2026-08-22 官方口径已落定",
+              "official_pending": [],
+              "official_decisions": {"D01": "按现状", "D02": "按现状", "D03": "按现状",
+                                     "D04": "reuse/承载力归设计院/只减新购不删工序", "D05": "按现状",
+                                     "D06": "计划工期暂不管", "D07": "按现状"}},
     "loss_rates": {"500002050": {"rate": 0.05, "category": "cable"},
                    "200001033": {"rate": 0.03, "category": "wire"},
                    "poles": {"rate": 0.0, "spare_rate": 0.02}},

@@ -104,6 +104,18 @@ def test_fiber_assignments_generation():
     assert fa[0]["assigned"][4] == {"tube": 2, "fiber": 1, "core": 1}
 
 
+def test_official_decisions_recorded():
+    """2026-08-22 官方口径答复：D01~D07 全部落定；D04=reuse/承载力归设计院/只减新购不删工序；D06=计划工期暂不管。"""
+    from design_parser.business_params import load_business_params
+
+    params = load_business_params()
+    meta = params.get("_meta", {})
+    assert meta.get("official_pending") == []
+    decisions = meta.get("official_decisions", {})
+    assert "D04" in decisions and "reuse" in decisions["D04"]
+    assert "D06" in decisions and "计划工期" in decisions["D06"]
+
+
 def test_fiber_assignments_no_layer():
     """无 CABLE 图层 → 空列表。"""
     ctx = _FakeCtx({"BOITE": []})
