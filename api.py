@@ -2,6 +2,7 @@
 # 功能：文件识别、工程加载、规则审查、BOM 生成、纤芯分配、文档理解、LLM 报告生成
 import sys
 import os
+import hashlib
 import uuid
 import tempfile
 import shutil
@@ -128,6 +129,56 @@ RULE_ROUTING = {
         "R011","R012","R016","R018","R019","R020","R021","R022","R032","R033","R-FIBER-001","R-BOM-001"
     ],
 }
+
+# 有界结果缓存：同一包（文件 SHA256 + 参数 + 规则版本）TTL 内秒回，避免评审/复测重复解析
+_PIPELINE_CACHE_VERSION = "20260822-r0051-dual"  # 规则/逻辑变更时递增，自动失效旧缓存
+_PIPELINE_CACHE_TTL_S = 3600
+_PIPELINE_CACHE_MAX_ENTRIES = 32
+_PIPELINE_CACHE_MAX_BYTES = 64 * 1024 * 1024
+_pipeline_cache: Dict[str, tuple] = {}  # key -> (ts, result)
+
+
+def _pipeline_cache_key(content: bytes, excel_limit: int, pdf_chars: int, include_tables: bool, compact: bool) -> str:
+    digest = hashlib.sha256(content).hexdigest()
+    return f"{digest}|{excel_limit}|{pdf_chars}|{int(include_tables)}|{int(compact)}|{_PIPELINE_CACHE_VERSION}"
+
+
+def _pipeline_cache_get(key: str) -> Optional[dict]:
+    now = time.time()
+    entry = _pipeline_cache.get(key)
+    if entry is None:
+        return None
+    ts, data = entry
+    if now - ts > _PIPELINE_CACHE_TTL_S:
+        _pipeline_cache.pop(key, None)
+        return None
+    return data
+
+
+def _pipeline_cache_put(key: str, data: dict) -> None:
+    now = time.time()
+    _pipeline_cache[key] = (now, data)
+    # 惰性清理：过期项
+    expired = [k for k, (ts, _d) in _pipeline_cache.items() if now - ts > _PIPELINE_CACHE_TTL_S]
+    for k in expired:
+        _pipeline_cache.pop(k, None)
+    # LRU 条目上限（dict 保持插入序，popitem(last=False) 淘汰最旧）
+    while len(_pipeline_cache) > _PIPELINE_CACHE_MAX_ENTRIES:
+        _pipeline_cache.pop(next(iter(_pipeline_cache)))
+    # 总字节上限（近似 json 长度）
+    total = 0
+    sizes = {}
+    for k, (ts, d) in _pipeline_cache.items():
+        try:
+            sizes[k] = len(json.dumps(d, ensure_ascii=False, default=str))
+        except Exception:
+            sizes[k] = 1024 * 1024
+        total += sizes[k]
+    while total > _PIPELINE_CACHE_MAX_BYTES and _pipeline_cache:
+        k = next(iter(_pipeline_cache))
+        total -= sizes.get(k, 1024 * 1024)
+        _pipeline_cache.pop(k, None)
+
 
 projects: Dict[str, ProjectData] = {}
 last_full_results: Dict[str, List[CheckResult]] = {}
@@ -1030,6 +1081,7 @@ async def full_pipeline(
             raise HTTPException(400, f"下载文件失败: {e}")
     else:
         raise HTTPException(400, "请提供 file 或 file_url")
+
     request_id = uuid.uuid4().hex[:12]
     logger.info(f"[{request_id}] 收到文件: {original_filename}（{len(content)} 字节）")
 
@@ -1353,6 +1405,14 @@ async def data_pipeline(
     else:
         raise HTTPException(400, "请提供 file 或 file_url")
 
+    cache_key = _pipeline_cache_key(content, excel_limit, pdf_chars, include_tables, compact)
+    cached = _pipeline_cache_get(cache_key)
+    if cached is not None:
+        hit = dict(cached)
+        hit["request_id"] = uuid.uuid4().hex[:12]
+        logger.info(f"[{hit['request_id']}] " + "命中结果缓存" + f": {original_filename}（{len(content)} 字节） project_id={hit['project_id']}")
+        return hit
+
     request_id = uuid.uuid4().hex[:12]
     logger.info(f"[{request_id}] 收到文件: {original_filename}（{len(content)} 字节）")
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
@@ -1661,6 +1721,8 @@ async def data_pipeline(
         # 保留解压文件供 project_id 后续接口（bom/fiber/table-data 等）取数；
         # 过期项目由 _store_project 的 TTL 清理临时文件，避免无限堆积。
 
+    if result.get("success"):
+        _pipeline_cache_put(cache_key, result)
     return result
 
 @app.post("/agent/orchestrate")
