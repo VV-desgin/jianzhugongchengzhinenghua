@@ -75,7 +75,7 @@ python api.py
 - `GET /project/{id}/safety-check` — 安全距离检查（R-SAFE-001~009：离地高度 4.5m/7m、电力线交越垂直净距 2/4/3/5m、管线平行/交叉净距；二维数据无 Z 时跳过并返回说明）
 - `GET /project/{id}/procedure-kb?keyword=xxx` — 施工规程知识库检索（施工对象/工序/步骤/材料/工艺/测试/安全/验收/常见错误/来源）
 - `GET /project/{id}/construction-kb?object_type=&material_code=` — 施工指令素材（B6 后端素材版）：官方施工规程 v2.0 的工序级作业卡（procedures：步骤/材料/工艺/测试/安全/验收/来源）+ 设计对象-物料-工序映射（materials：物料码/对象/工序），可按对象类型或物料编码过滤
-- `GET /project/{id}/relations?include_distances=true` — 上下游关系建模：CABLE.ORIGINE/EXTREMITE → 设备对象、BOITE/SITE 引用字段、端点距离统计（单位米）（校验规则 + 图层字段说明 + 可执行条件），返回 {project_id, project_type, objects} ，objects 包含 cable/boite/ptech（字段覆盖 code/longueur/capacite/type/nb_fibre_util/hauteur_appui），供 BOM / 纤芯分配工作流使用
+- `GET /project/{id}/relations?include_distances=true` — 上下游关系建模：CABLE.ORIGINE/EXTREMITE → 设备对象、BOITE/SITE 引用字段、端点距离统计（单位米），返回 {project_id, project_type, objects} ，objects 包含 cable/boite/ptech（字段覆盖 code/longueur/capacite/type/nb_fibre_util/hauteur_appui），供 BOM / 纤芯分配工作流使用
 
 ### Agent 接口（支持文件上传或 file_url）
 

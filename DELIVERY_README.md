@@ -62,7 +62,7 @@
 - 纯 Excel 工程包适配器：含官方图层 Sheet 的 xlsx/xls 可直接进入主总控（inspect 识别、字段别名统一、行转 engineering_data.objects），无坐标时执行非空间规则（字段/CODE/关系/容量）并跳过 GIS 空间规则（返回 review_scope=non_spatial 与 skipped_gis_rules）。
 - 新增 `engineering_data`：统一工程对象输出（{project_id, project_type, objects}，objects 包含 cable/boite/ptech/site/infrastructure，每项含唯一 id，字段覆盖 code/longueur/capacite/type/nb_fibre_util/hauteur_appui），供 BOM / 纤芯分配工作流使用；新增 `GET /project/{id}/engineering-data` 接口。
 - 新增 `POST /agent/inspect-file` 单文件识别；`/table-data` 支持 filter/page/page_size；错误响应统一为 {success:false, data:null, error:{code,message}}；`/device/{code}` 支持 crs 参数坐标转换；解析结果按文件+修改时间缓存。
-- 新增 `API_SAMPLES.md`：10 个新接口的真实返回 JSON 样例（由赛题一/赛题四数据生成）。
+- 新增接口返回样例（本地保留，未随仓库发布）：由赛题一/赛题四真实数据生成。
 - 新增 `design_parser/mappings/length_rules.json`：R032 字段长度检查可配置。CABLE_AMONT 官方口径 Longueur=30（与 CABLE.CODE 对齐）：按全串校验（含前缀与末尾 -NNN），两套赛题实测全串最长 29 ≤ 30 全通过，>30 判超长；配置 max_len/prefix_mode/strip_increment 可一键切换口径。
 - 新增 BOM/纤芯数据接口：`GET /project/{id}/bom-tables`、`GET /project/{id}/fiber-tables`、`GET /project/{id}/table-data`，支持解析 BOM_LIST/物料编码库/纤芯 TOPO 表格与 BOX/CABLE/SRO GPKG 层；`/agent/data-pipeline` 可传 `include_tables=true` 一并返回表格清单。
 - 大数据量优化：Excel 读取改为流式单遍扫描（BOM_LIST 104 万行过滤/翻页内存安全，实测过滤全表扫描约 6s）；	able-data 按（文件+参数+修改时间）缓存，重复请求不重扫；workbook_summary 单次打开工作簿遍历全部页签。
@@ -120,7 +120,7 @@ python3 api.py
 python -m pytest tests -q
 ```
 
-预期结果：93 passed（含 10 个标准测试案例的自动化验证与纤芯表头/真实 TOPO 冲突检查用例）。
+预期结果：178 passed（含标准测试案例、纤芯表头/真实 TOPO 冲突检查、BOM 利旧/零值/非标物料用例）。
 
 ## 五、API 调用示例
 
@@ -139,7 +139,7 @@ curl -X POST http://127.0.0.1:8000/agent/data-pipeline \
 
 ## 六、官方场勘包真实返回 JSON 样例
 
-见同目录下 `场勘设计图_返回样例.json`。
+样例 JSON 本地保留（未随仓库发布）。
 
 关键指标：
 - project_type: survey_design

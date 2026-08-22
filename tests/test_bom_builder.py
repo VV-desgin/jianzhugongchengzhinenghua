@@ -74,7 +74,7 @@ def test_bom_box_mapping():
 
 
 def test_bom_params_source_marked():
-    """所有 BOM 行数据来源标注行业参考默认值，待官方确认。"""
+    """所有 BOM 行数据来源标注行业标准惯例设定（D01~D07 已定稿）。"""
     eng = _eng({"cable": [], "boite": [], "ptech": [], "site": [], "infrastructure": []})
     result = build_bom(eng)
     assert result["success"] is True

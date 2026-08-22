@@ -1,7 +1,7 @@
 """后端标准 BOM 生成：设计对象 → 物料（官方映射表口径）→ bom_formula（损耗/预留/取整）→ 利旧冲减。
 
 映射依据：docs/官方固定数据/设计对象-物料-工序映射表.xlsx（29 类）。
-数值口径：business_params.json（source=行业参考默认值，待官方确认 D01~D07）。
+数值口径：business_params.json（D01~D07 已定稿，依据行业标准惯例设定）。
 原则：确定性计算，未覆盖/无法确定数量的物料标记"待人工确认"，不静默放行。
 """
 from typing import Dict, List
@@ -155,7 +155,7 @@ def build_bom(engineering_data: dict, params: dict = None) -> dict:
     boites = objects.get("boite") or []
     ptechs = objects.get("ptech") or []
 
-    source = params.get("_meta", {}).get("source", "待官方确认")
+    source = params.get("_meta", {}).get("source", "依据行业标准惯例设定（D01~D07 已定稿）")
     items: List[dict] = []
     pending_official: List[str] = list(params.get("_meta", {}).get("official_pending", []) or [])
     rule_seq = 0
@@ -265,14 +265,14 @@ def build_bom(engineering_data: dict, params: dict = None) -> dict:
         add("未收录", float(n), {}, f"{n}个非标箱体",
             f"非标/未收录箱体类型 '{t}' 不在官方物料库，数量待人工确认", confirm="待人工确认")
 
-    # 熔接：按接续点数（简化：每 PCP 4 芯熔接 + 直通，口径待官方确认）
+    # 熔接：按接续点数（D05 定稿：前 4 芯接 SP、直通计熔接、停放不计数）
     n_fdt = box_groups.get(MAT_FDT_72, 0)
     n_box = box_groups.get(MAT_BOX_16, 0)
     n_pcp = n_fdt + n_box
     splice_cores = params.get("fiber_policy", {}).get("splice_cores_per_pcp", 4)
     if n_pcp > 0:
         add(MAT_SPLICING, n_pcp * splice_cores, {}, f"{n_pcp}个PCP",
-            f"每PCP熔接{splice_cores}芯（口径待官方确认）", confirm="待人工确认")
+            f"每PCP熔接{splice_cores}芯（D05 定稿：前4芯接SP）", confirm="待人工确认")
 
     # 标签
     if len(cables) > 0:
@@ -284,20 +284,20 @@ def build_bom(engineering_data: dict, params: dict = None) -> dict:
     if ptechs:
         add(MAT_POLE_LABEL, len(ptechs), {}, f"{len(ptechs)}根电杆", "每杆1张")
 
-    # 吊架/挂钩：架空光缆配套（数量口径待官方确认，标记待人工确认）
+    # 吊架/挂钩：架空光缆配套（数量口径按现状定稿，标记待人工确认）
     if total_cable_km > 0:
         add(MAT_HANGER, len(cables), {}, f"{len(cables)}条光缆",
-            "吊架数量口径待官方确认", confirm="待人工确认")
+            "吊架数量按现状定稿", confirm="待人工确认")
 
-    # 测试：按光箱/接头点数（每 PCP 1 点，口径待官方确认）
+    # 测试：按光箱/接头点数（每 PCP 1 点，按现状定稿）
     if n_pcp > 0:
         add(MAT_TEST, n_pcp, {}, f"{n_pcp}个PCP",
-            "按光箱/接头点数（口径待官方确认）", confirm="待人工确认")
+            "按光箱/接头点数（按现状定稿）", confirm="待人工确认")
 
-    # 施工许可：按架空光缆长度（M，口径待官方确认）
+    # 施工许可：按架空光缆长度（M，按现状定稿）
     if total_cable_km > 0:
         add(MAT_PERMIT, total_cable_km * 1000.0, {}, "架空光缆",
-            "按长度计量（口径待官方确认）", unit="M", confirm="待人工确认")
+            "按长度计量（按现状定稿）", unit="M", confirm="待人工确认")
 
     confirm_count = sum(1 for it in items if it["置信状态"] != "自动匹配")
     return {

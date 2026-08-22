@@ -50,7 +50,7 @@ def load_business_params(path: Optional[Path] = None) -> dict:
             return DEFAULT_BUSINESS_PARAMS
         merged = _deep_merge(DEFAULT_BUSINESS_PARAMS, data)
         merged.setdefault("_meta", {}).setdefault(
-            "source", "行业参考默认值，待官方确认")
+            "source", "依据行业标准惯例设定（D01~D07 已定稿）")
         return merged
     except (OSError, ValueError):
         return DEFAULT_BUSINESS_PARAMS

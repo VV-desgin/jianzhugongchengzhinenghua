@@ -22,7 +22,7 @@ curl -X POST http://127.0.0.1:8000/agent/data-pipeline \
   -F "file=@场勘设计图.zip"
 ```
 
-可选参数：`excel_limit`（Excel 行数上限，默认 500）、`pdf_chars`（PDF 字符数上限，默认 3000）。
+可选参数：`excel_limit`（Excel 行数上限，默认 0，不返回 excel_data）、`pdf_chars`（PDF 字符数上限，默认 3000）。
 
 ## 三、响应契约
 
@@ -90,7 +90,7 @@ curl -X POST http://127.0.0.1:8000/agent/data-pipeline \
 - 安装：`pip install -r requirements.txt`。Python 3.14 上 pip 会提示 `Ignoring fiona`（预期行为），自动安装 pyshp 纯 Python 回退，SHP 读取不受影响。
 - 启动：`python api.py`，监听 `http://0.0.0.0:8000`。
 
-## 五、配置步骤（Dify）
+## 六、配置步骤（Dify）
 
 1. 启动服务并确认 `GET /health` 返回 200。
 2. 在 Dify 中新建 HTTP 工具：
@@ -101,7 +101,7 @@ curl -X POST http://127.0.0.1:8000/agent/data-pipeline \
 3. 用官方《场勘设计图.zip》测试，返回 `project_type=survey_design` 即接入成功。
 4. 如需 LLM 报告，配置环境变量后另建工具调用 `/agent/orchestrate`。
 
-## 六、Python 调用示例
+## 七、Python 调用示例
 
 ```python
 import httpx
@@ -112,7 +112,7 @@ with open("场勘设计图.zip", "rb") as f:
 print(r.json()["project_type"])  # survey_design
 ```
 
-## 七、验收指标（官方场勘包）
+## 八、验收指标（官方场勘包）
 
 - project_type = survey_design
 - 23 个图层 / 244 个对象

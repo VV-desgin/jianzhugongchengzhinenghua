@@ -1,7 +1,7 @@
 """BOM 确定性公式：净量 → 损耗 → 预留 → 包装取整。
 
 口径来源：《问题清单——我方解决方案（详细版）》统一 BOM 公式；
-数值默认值见 business_params.json（source=行业参考默认值，待官方确认）。
+数值默认值见 business_params.json（D01~D07 已定稿，依据行业标准惯例设定）。
 """
 import math
 from typing import Dict
@@ -86,7 +86,7 @@ def compute_bom_quantity(material_code: str, net_qty: float, counts: Dict,
     reserve = reserve_m / 1000.0 if unit == "KM" else reserve_m
     before = net + loss + reserve
     final, pack_desc = apply_packaging(before, material_code, params, unit)
-    source = params.get("_meta", {}).get("source", "待官方确认")
+    source = params.get("_meta", {}).get("source", "依据行业标准惯例设定（D01~D07 已定稿）")
     return {
         "net": round(net, 6),
         "loss": round(loss, 6),

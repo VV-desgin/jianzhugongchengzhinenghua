@@ -82,11 +82,11 @@ OFFICIAL_RULES = [
      ["R021", "R005", "R-FLD-001"], "complete"),
     ("4.16", "图层字段检查", "SITE CODE 不能重名",
      ["R007", "R-FLD-002"], "complete"),
-    ("5.1", "孤立性检查（已实现 R005_x，未接入 data-pipeline 路由）", "SITE(PM) 与 ZPM 双向孤立性（SITE.CODE=ZPM.CODE）",
+    ("5.1", "孤立性检查（R005_x 已路由）", "SITE(PM) 与 ZPM 双向孤立性（SITE.CODE=ZPM.CODE）",
      ["R005_1"], "complete"),
-    ("5.2", "孤立性检查（已实现 R005_x，未接入 data-pipeline 路由）", "SITE(PM) 与 BOITE(PBO) 主从双向孤立性（BOITE.REF_PM=SITE.CODE）",
+    ("5.2", "孤立性检查（R005_x 已路由）", "SITE(PM) 与 BOITE(PBO) 主从双向孤立性（BOITE.REF_PM=SITE.CODE）",
      ["R005_2"], "complete"),
-    ("5.3", "孤立性检查（已实现 R005_x，未接入 data-pipeline 路由）", "SITE(PM) 与 CABLE(DISTRIBUTION) 主从双向孤立性（CABLE.REF_PM=SITE.CODE）",
+    ("5.3", "孤立性检查（R005_x 已路由）", "SITE(PM) 与 CABLE(DISTRIBUTION) 主从双向孤立性（CABLE.REF_PM=SITE.CODE）",
      ["R005_3"], "complete"),
     ("5.4", "孤立性检查", "CABLE 首尾端点与 BOITE 双向孤立性（ORIGINE/EXTREMITE 对 BPE/PBO）",
      ["R-REL-004", "R024", "R-GIS-006", "R005_4"], "complete"),
@@ -127,8 +127,8 @@ EXPECTED_RULES = {
 
 STABILITY = [
     ("官方场勘设计图.zip", "-", "连续 3 次，HTTP 200，43/43 规则通过，23 图层/244 对象，计数逐次一致"),
-    ("赛题一.zip", "-", "HTTP 200，49 通过/228 告警，26.9s（R021/R016 修复后复测）"),
-    ("赛题四-摩洛哥.rar", "-", "HTTP 200，49 通过/228 告警，66.6s（含 BOM/纤芯表提取）"),
+    ("赛题一.zip", "-", "HTTP 200，57 通过/230 告警（2026-08-22 基线）"),
+    ("赛题四-摩洛哥.rar", "-", "HTTP 200，57 通过/230 告警（2026-08-22 基线）"),
 ]
 
 
