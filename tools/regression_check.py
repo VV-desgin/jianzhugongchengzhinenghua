@@ -5,7 +5,7 @@
 - 场勘设计图.zip：survey_design，43/43/0，23 图层/244 对象
 - 赛题一.zip：full_design，287/57/230（8-16 R005_1 已按官方 R-REL-001 口径启用；8-20 R-GIS/R-SAFE 并入主流程后新增 R-GIS-004×2；规则分布精确一致），R008/R012/R021/R032=0
 - 赛题四-摩洛哥.rar：as_built，287/57/230（与赛题一同数据）
-- TC-01_正确工程案例.xlsx：Excel 工程包，109/8/101（R-BOM-001×3 已升 error，2026-08-22 决策），R007=1 R021=97 R-BOM-001=3，review_scope=non_spatial（P0-01 起 warning 不计入 failed_rules）
+- TC-01_正确工程案例.xlsx：Excel 工程包，109/8/101（R-BOM-001×3 已升 error，2026-08-22 按确认口径），R007=1 R021=97 R-BOM-001=3，review_scope=non_spatial（P0-01 起 warning 不计入 failed_rules）
 
 > 2026-08-22 基线由 285/57/228 更新为 287/57/230：并入 R-GIS/R-SAFE 后赛题一/四新增 R-GIS-004×2（error，计入 failed）。
 

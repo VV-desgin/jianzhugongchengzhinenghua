@@ -64,7 +64,7 @@ def test_severity_counts_mixed():
 def test_severity_map_normalization():
     results = [
         _r("R032", passed=False),      # 未配置 → warning
-        _r("R-BOM-001", passed=False), # SEVERITY_MAP → error（2026-08-22 决策）
+        _r("R-BOM-001", passed=False), # SEVERITY_MAP → error（2026-08-22 按确认口径）
         _r("R007", passed=False),      # SEVERITY_MAP → fatal
         _r("R008", passed=False),      # SEVERITY_MAP → error
     ]
@@ -120,6 +120,6 @@ def test_data_pipeline_review_results_carry_severity(client, upload_survey):
 
 
 def test_r_bom_001_maps_to_error():
-    """附表2 R-BOM-001（物料无法匹配）按 error 计，与 R-FIBER-001 一致（2026-08-22 决策）。"""
+    """附表2 R-BOM-001（物料无法匹配）按 error 计，与 R-FIBER-001 一致（2026-08-22 按确认口径）。"""
     from design_parser.rule_engine import SEVERITY_MAP
     assert SEVERITY_MAP.get("R-BOM-001") == "error"

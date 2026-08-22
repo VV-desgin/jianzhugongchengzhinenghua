@@ -2,7 +2,7 @@
 
 官方审查规则库 v2.0 R-REL-002：提取 BOITE(TYPE=PBO) 的 REF_PM，在 SITE 图层中查找
 对应 CODE；必须存在对应关系（BOITE.REF_PM = SITE.CODE），严重等级=高。
-2026-08-22 决策：依据官方规则库启用路由（与 R005_1/R005_3 同组）。
+2026-08-22 按官方 R-REL-002 依据启用路由（与 R005_1/R005_3 同组）。
 """
 
 from types import SimpleNamespace
