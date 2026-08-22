@@ -11,7 +11,8 @@ def test_load_returns_expected_keys():
 def test_defaults_when_file_missing(tmp_path):
     p = load_business_params(tmp_path / "not_exist.json")
     assert p["fiber_policy"]["required_cores_default"] == 4
-    assert p["_meta"]["source"].startswith("行业参考默认值")
+    assert p["_meta"]["source"].startswith("行业标准设定")
+    assert p["_meta"]["official_pending"] == []
 
 
 def test_loss_rate_defaults():
