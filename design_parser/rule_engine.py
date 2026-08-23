@@ -645,6 +645,53 @@ def _is_root_code(dev_code: str) -> bool:
 
 def check_reference_exists(ctx: RuleContext) -> List[CheckResult]:
     results = []
+    # 跨图层敷设逻辑目标编码集（2026-08-23 优化）：承载基础设施、建筑、技术点、设备
+    def _layer_feats(prefix):
+        key = next((k for k in ctx.layers if k.upper().startswith(prefix)), None)
+        return ctx.layers.get(key, []) if key else []
+    infra_feats = _layer_feats("INFRASTRUCTURE")
+    infra_codes = {str(f.properties.get("CODE")).strip() for f in infra_feats if f.properties.get("CODE")}
+    target_codes = set()
+    for prefix in ("IMB", "PTECH", "SITE", "BOITE"):
+        for f in _layer_feats(prefix):
+            v = f.properties.get("CODE")
+            if v is not None and str(v).strip():
+                target_codes.add(str(v).strip())
+    # CABLE.CODE_INFRA → INFRASTRUCTURE.CODE（光缆承载基础设施引用，官方字段必填）
+    if infra_codes:
+        for cable in ctx.cables:
+            props = cable.properties if hasattr(cable, "properties") else cable
+            code = props.get("CODE", getattr(cable, "code", getattr(cable, "feature_id", "")))
+            infra_ref = str(props.get("CODE_INFRA") or "").strip()
+            if infra_ref and infra_ref not in infra_codes:
+                results.append(CheckResult(
+                    check_object=f"光缆 {code}",
+                    passed=False,
+                    problem_location="字段 CODE_INFRA",
+                    actual_value=infra_ref,
+                    expected_value="存在的承载基础设施编码（INFRASTRUCTURE.CODE）",
+                    rule_id=RULE_IDS["REFERENCE_NOT_EXIST"],
+                    error_description=f"引用的承载基础设施编码 '{infra_ref}' 不存在",  # 跨图层敷设逻辑（2026-08-23）
+                    severity="error",
+                ))
+    # INFRASTRUCTURE.ORIGINE/EXTREMITE → 设备/建筑编码（管道/杆路端点承载逻辑）
+    if target_codes:
+        for feat in infra_feats:
+            props = feat.properties or {}
+            code = props.get("CODE", getattr(feat, "feature_id", ""))
+            for field, label in (("ORIGINE", "起点"), ("EXTREMITE", "终点")):
+                v = str(props.get(field) or "").strip()
+                if v and v not in target_codes:
+                    results.append(CheckResult(
+                        check_object=f"基础设施 {code}",
+                        passed=False,
+                        problem_location=f"字段 {field}",
+                        actual_value=v,
+                        expected_value="存在的设备/建筑编码（IMB/PTECH/SITE/BOITE.CODE）",
+                        rule_id=RULE_IDS["REFERENCE_NOT_EXIST"],
+                        error_description=f"引用的{label}设备/建筑编码 '{v}' 不存在",  # 跨图层敷设逻辑（2026-08-23）
+                        severity="error",
+                    ))
     device_codes = set()
     for box in ctx.boxes:
         if isinstance(box, Box):
