@@ -348,13 +348,48 @@ def _is_zero_or_negative(value) -> bool:
         return False
 
 
+# 物理量字段不允许负值（如架空设备高度）：负值在物理上不可能；0 可能表示不适用（CHAMBRE 等），不拦截
+NEGATIVE_VALUE_MEANS_INVALID = {
+    "PTECH": {"HAUTEUR_APPUI", "HAUTEUR_AP", "HAUTEUR"},
+}
+
+
+def _is_negative(value) -> bool:
+    """负值判定（仅 <0，-5/-5.0/'-5' 等；0 不算负值）。"""
+    if isinstance(value, bool):
+        return False
+    try:
+        return float(value) < 0
+    except (TypeError, ValueError):
+        return False
+
+
 def check_required_fields(ctx: RuleContext, required_fields: Optional[Dict[str, List[str]]] = None) -> List[CheckResult]:
+    results = []
+    # 负值物理量拦截：架空设备高度（PTECH.HAUTEUR_APPUI/HAUTEUR_AP/HAUTEUR）不允许 < 0（2026-08-23）
+    for feat in ctx.layers.get("PTECH", []):
+        props = feat.properties or {}
+        code = props.get("CODE", getattr(feat, "feature_id", ""))
+        for field in ("HAUTEUR_APPUI", "HAUTEUR_AP", "HAUTEUR"):
+            value = props.get(field)
+            if value is None or not _is_negative(value):
+                continue
+            results.append(CheckResult(
+                check_object=f"PTECH 要素 {code}",
+                passed=False,
+                problem_location=f"字段 {field}",
+                actual_value=str(value),
+                expected_value="≥0（架空设备高度不允许负值）",
+                rule_id=RULE_IDS["REQUIRED_FIELD_EMPTY"],
+                error_description=f"必填字段 '{field}' 为负值（高度不可能小于 0）",
+                severity="error",
+            ))
+            break
     if required_fields is None:
         required_fields = load_required_fields_config()
     if not required_fields:
-        return []
+        return results
 
-    results = []
     for layer_name, features in ctx.layers.items():
         matched_fields = None
         matched_cfg_key = ""
