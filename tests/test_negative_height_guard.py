@@ -26,7 +26,7 @@ def test_negative_height_flagged():
     assert len(hits) == 1
     assert hits[0].passed is False
     assert hits[0].severity == "error"
-    assert "负值" in hits[0].error_description
+    assert "挂高为负值，高度不可能小于 0" in hits[0].error_description
     assert "HAUTEUR_APPUI" in hits[0].problem_location
 
 

@@ -381,7 +381,7 @@ def check_required_fields(ctx: RuleContext, required_fields: Optional[Dict[str, 
                 actual_value=str(value),
                 expected_value="≥0（架空设备高度不允许负值）",
                 rule_id=RULE_IDS["REQUIRED_FIELD_EMPTY"],
-                error_description=f"必填字段 '{field}' 为负值（高度不可能小于 0）",
+                    error_description=f"挂高为负值，高度不可能小于 0",
                 severity="error",
             ))
             break
@@ -425,7 +425,7 @@ def check_required_fields(ctx: RuleContext, required_fields: Optional[Dict[str, 
                         actual_value=str(value),
                         expected_value=">0（核心计算字段不允许零值/负值）",
                         rule_id=RULE_IDS["REQUIRED_FIELD_EMPTY"],
-                        error_description=f"必填字段 '{field}' 为零值或负值（长度缺失）"
+                error_description=f"长度为零或负数，视为长度缺失"
                     ))
     return results
 
@@ -471,7 +471,7 @@ def check_field_type_invalid(ctx: RuleContext) -> List[CheckResult]:
                             actual_value=f"类型 {type(value).__name__}",
                             expected_value="整数",
                             rule_id="R006",
-                            error_description=f"字段 '{prop_key}' 应为整数类型，实际为 {type(value).__name__}"
+                            error_description=f"字段 '{prop_key}' 的值不是整数"
                         ))
                     elif target_type == 'float' and not isinstance(value, (int, float)):
                         results.append(CheckResult(
@@ -481,7 +481,7 @@ def check_field_type_invalid(ctx: RuleContext) -> List[CheckResult]:
                             actual_value=f"类型 {type(value).__name__}",
                             expected_value="浮点数",
                             rule_id="R006",
-                            error_description=f"字段 '{prop_key}' 应为浮点数类型，实际为 {type(value).__name__}"
+                            error_description=f"字段 '{prop_key}' 的值不是数字（应为浮点数）"
                         ))
                     break
     return results

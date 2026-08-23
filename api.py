@@ -137,7 +137,7 @@ RULE_ROUTING = {
 }
 
 # 有界结果缓存：同一包（文件 SHA256 + 参数 + 规则版本）TTL 内秒回，避免评审/复测重复解析
-_PIPELINE_CACHE_VERSION = "20260823-r005-negheight-r008-modepose-unrouted11"  # 规则/逻辑变更时递增，自动失效旧缓存
+_PIPELINE_CACHE_VERSION = "20260823-r005-negheight-r008-modepose-unrouted11-msg20260824"  # 规则/逻辑变更时递增，自动失效旧缓存
 _PIPELINE_CACHE_TTL_S = 3600
 _PIPELINE_CACHE_MAX_ENTRIES = 32
 _PIPELINE_CACHE_MAX_BYTES = 64 * 1024 * 1024

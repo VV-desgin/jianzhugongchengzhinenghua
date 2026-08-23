@@ -19,7 +19,7 @@ def test_cable_zero_length_flagged():
     hits = [i for i in check_required_fields(ctx)
             if i.rule_id == "R005" and "LONGUEUR" in (i.problem_location or "")]
     assert len(hits) == 1
-    assert ("零值" in hits[0].error_description) or ("长度缺失" in hits[0].error_description)
+    assert "长度为零或负数，视为长度缺失" in hits[0].error_description
 
 
 def test_cable_positive_length_ok():
