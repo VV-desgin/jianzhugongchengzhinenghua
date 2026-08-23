@@ -692,6 +692,30 @@ def check_reference_exists(ctx: RuleContext) -> List[CheckResult]:
                         error_description=f"引用的{label}设备/建筑编码 '{v}' 不存在",  # 跨图层敷设逻辑（2026-08-23）
                         severity="error",
                     ))
+    # 同一基础设施承载光缆敷设方式一致性（2026-08-23：TC-17 敷设方式冲突；仅在有 INFRASTRUCTURE 图层且承载编码存在时生效）
+    mode_groups = {}
+    for cable in ctx.cables:
+        props = cable.properties if hasattr(cable, "properties") else cable
+        cable_code = str(props.get("CODE") or getattr(cable, "feature_id", "") or "").strip()
+        infra_ref = str(props.get("CODE_INFRA") or "").strip()
+        mode = str(props.get("MODE_POSE") or "").strip().upper()
+        if infra_ref in infra_codes and mode:
+            group = mode_groups.setdefault(infra_ref, {"modes": set(), "cables": []})
+            group["modes"].add(mode)
+            group["cables"].append(f"{cable_code}({mode})")
+    for infra_ref, group in mode_groups.items():
+        if len(group["modes"]) > 1:
+            modes = sorted(group["modes"])
+            results.append(CheckResult(
+                check_object=f"基础设施 {infra_ref}",
+                passed=False,
+                problem_location="字段 MODE_POSE",
+                actual_value=", ".join(modes),
+                expected_value="同一基础设施承载光缆敷设方式一致",
+                rule_id=RULE_IDS["REFERENCE_NOT_EXIST"],
+                error_description=f"承载基础设施 '{infra_ref}' 上的光缆敷设方式不一致：{', '.join(modes)}（光缆：{', '.join(group['cables'])}）",
+                severity="error",
+            ))
     device_codes = set()
     for box in ctx.boxes:
         if isinstance(box, Box):

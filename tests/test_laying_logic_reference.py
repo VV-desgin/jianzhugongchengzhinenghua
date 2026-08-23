@@ -78,3 +78,53 @@ def test_cable_endpoint_dangling_still_flagged():
     )
     hits = [i for i in check_reference_exists(ctx) if i.rule_id == "R008"]
     assert any(i.problem_location == "字段 end" and "GHOST-99" in i.actual_value for i in hits)
+
+
+def test_mixed_laying_mode_on_same_infra_flagged():
+    """同一基础设施承载不同敷设方式的光缆 → R008 error（TC-17 敷设方式冲突）。"""
+    ctx = _ctx(
+        {"INFRASTRUCTURE": [_Feat({"CODE": "INF-01", "TYPE": "SOUTERRAIN"})], "CABLE": []},
+        [
+            _Feat({"CODE": "CABLE-01", "CODE_INFRA": "INF-01", "MODE_POSE": "SOUTERRAIN"}),
+            _Feat({"CODE": "CABLE-02", "CODE_INFRA": "INF-01", "MODE_POSE": "AERIEN"}),
+        ],
+    )
+    hits = [i for i in check_reference_exists(ctx) if i.rule_id == "R008" and i.problem_location == "字段 MODE_POSE"]
+    assert len(hits) == 1
+    assert hits[0].check_object == "基础设施 INF-01"
+    assert hits[0].severity == "error"
+    assert "AERIEN" in hits[0].actual_value and "SOUTERRAIN" in hits[0].actual_value
+    assert "CABLE-01" in hits[0].error_description and "CABLE-02" in hits[0].error_description
+
+
+def test_same_laying_mode_on_same_infra_ok():
+    """同一基础设施上所有光缆敷设方式一致（官方正确案例 AERIEN×SOUTERRAIN 口径）→ 不报。"""
+    ctx = _ctx(
+        {"INFRASTRUCTURE": [_Feat({"CODE": "INF-01", "TYPE": "SOUTERRAIN"})], "CABLE": []},
+        [
+            _Feat({"CODE": "CABLE-01", "CODE_INFRA": "INF-01", "MODE_POSE": "AERIEN"}),
+            _Feat({"CODE": "CABLE-02", "CODE_INFRA": "INF-01", "MODE_POSE": "AERIEN"}),
+        ],
+    )
+    assert not [i for i in check_reference_exists(ctx) if i.rule_id == "R008" and i.problem_location == "字段 MODE_POSE"]
+
+
+def test_single_cable_on_infra_no_conflict():
+    """单条光缆不构成敷设方式冲突。"""
+    ctx = _ctx(
+        {"INFRASTRUCTURE": [_Feat({"CODE": "INF-01"})], "CABLE": []},
+        [_Feat({"CODE": "CABLE-01", "CODE_INFRA": "INF-01", "MODE_POSE": "AERIEN"})],
+    )
+    assert not [i for i in check_reference_exists(ctx) if i.rule_id == "R008" and i.problem_location == "字段 MODE_POSE"]
+
+
+def test_mixed_mode_skipped_without_infra_layer():
+    """无 INFRASTRUCTURE 图层时不查敷设方式一致性（避免与缺图层规则重复）。"""
+    ctx = _ctx(
+        {"CABLE": []},
+        [
+            _Feat({"CODE": "CABLE-01", "CODE_INFRA": "INF-01", "MODE_POSE": "SOUTERRAIN"}),
+            _Feat({"CODE": "CABLE-02", "CODE_INFRA": "INF-01", "MODE_POSE": "AERIEN"}),
+        ],
+    )
+    assert not [i for i in check_reference_exists(ctx) if i.problem_location == "字段 MODE_POSE"]
