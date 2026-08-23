@@ -448,34 +448,42 @@ def check_field_type_invalid(ctx: RuleContext) -> List[CheckResult]:
         if not matched_config:
             continue
         conversions = matched_config.get('type_conversions', {})
+        field_map = matched_config.get('field_map', {})
         for feat in features:
             props = feat.properties
-            for field, target_type in conversions.items():
-                if field not in props:
-                    continue
-                value = props[field]
-                if value is None:
-                    continue
-                if target_type == 'int' and not isinstance(value, int):
-                    results.append(CheckResult(
-                        check_object=f"{layer_name} 要素 {props.get('CODE', feat.feature_id)}",
-                        passed=False,
-                        problem_location=f"字段 {field}",
-                        actual_value=f"类型 {type(value).__name__}",
-                        expected_value="整数",
-                        rule_id="R006",
-                        error_description=f"字段 '{field}' 应为整数类型，实际为 {type(value).__name__}"
-                    ))
-                elif target_type == 'float' and not isinstance(value, (int, float)):
-                    results.append(CheckResult(
-                        check_object=f"{layer_name} 要素 {props.get('CODE', feat.feature_id)}",
-                        passed=False,
-                        problem_location=f"字段 {field}",
-                        actual_value=f"类型 {type(value).__name__}",
-                        expected_value="浮点数",
-                        rule_id="R006",
-                        error_description=f"字段 '{field}' 应为浮点数类型，实际为 {type(value).__name__}"
-                    ))
+            props_upper = {str(k).upper(): k for k in props}
+            for target_field, target_type in conversions.items():
+                source_fields = field_map.get(target_field) or [target_field]
+                if isinstance(source_fields, str):
+                    source_fields = [source_fields]
+                for raw in source_fields:
+                    prop_key = props_upper.get(str(raw).upper())
+                    if prop_key is None:
+                        continue
+                    value = props[prop_key]
+                    if value is None:
+                        continue
+                    if target_type == 'int' and not isinstance(value, int):
+                        results.append(CheckResult(
+                            check_object=f"{layer_name} 要素 {props.get('CODE', feat.feature_id)}",
+                            passed=False,
+                            problem_location=f"字段 {prop_key}",
+                            actual_value=f"类型 {type(value).__name__}",
+                            expected_value="整数",
+                            rule_id="R006",
+                            error_description=f"字段 '{prop_key}' 应为整数类型，实际为 {type(value).__name__}"
+                        ))
+                    elif target_type == 'float' and not isinstance(value, (int, float)):
+                        results.append(CheckResult(
+                            check_object=f"{layer_name} 要素 {props.get('CODE', feat.feature_id)}",
+                            passed=False,
+                            problem_location=f"字段 {prop_key}",
+                            actual_value=f"类型 {type(value).__name__}",
+                            expected_value="浮点数",
+                            rule_id="R006",
+                            error_description=f"字段 '{prop_key}' 应为浮点数类型，实际为 {type(value).__name__}"
+                        ))
+                    break
     return results
 
 
@@ -2108,7 +2116,12 @@ def check_field_domain(ctx: RuleContext) -> List[CheckResult]:
                     csvf.seek(0)
                     dialect = csv_module.Sniffer().sniff(sample, delimiters=';,')
                     reader = csv_module.reader(csvf, dialect)
-                    next(reader, None)
+                    first = next(reader, None)
+                    # 官方字典 CSV 无表头（值;值）；仅当首行像表头时才跳过
+                    if first and first[0].strip().upper() not in _CSV_HEADER_TOKENS:
+                        v0 = first[0].strip()
+                        if v0:
+                            valid_vals.add(v0)
                     for row in reader:
                         if not row:
                             continue
@@ -2165,6 +2178,8 @@ def check_field_domain(ctx: RuleContext) -> List[CheckResult]:
 
 
 _LENGTH_RULES_CACHE = None
+
+_CSV_HEADER_TOKENS = {"CODE", "LIBELLE", "LABEL", "NAME", "VALEUR", "VALUE", "STATUT", "TYPE", "DESCRIPTION"}
 
 
 def _load_length_rules():
