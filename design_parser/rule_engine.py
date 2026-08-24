@@ -3095,6 +3095,234 @@ def build_fiber_assignments(ctx: RuleContext) -> list:
 
 
 
+_POINT_LAYER_TOKENS = ("PTECH", "BOITE", "SITE", "IMB")
+_ABANDONED_STATUTS = {"ABANDONNE", "ABANDONNEE", "ABANDONNÉ", "DEMANTELE", "A DEMANTELER", "RETIRE", "A_RETIRER"}
+_SUPPORT_BOITIER_MAX = 8  # 支撑件挂载设备数物理承载上限（工程常识阈值，可按规范调整）
+
+
+def _as_float(value):
+    if value is None:
+        return None
+    try:
+        return float(str(value).strip())
+    except (ValueError, TypeError):
+        return None
+
+
+def _point_xy(feat):
+    geom = getattr(feat, "_geometry", None)
+    if geom is not None and hasattr(geom, "x") and hasattr(geom, "y"):
+        return float(geom.x), float(geom.y)
+    x = _as_float(feat.properties.get("X"))
+    y = _as_float(feat.properties.get("Y"))
+    if x is None or y is None:
+        return None
+    return x, y
+
+
+def check_point_coordinate_overlap(ctx: RuleContext) -> List[CheckResult]:
+    """R-GIS-007：同图层点状实体坐标完全重叠（不同 CODE、欧氏距离为零，TC-18）。"""
+    results = []
+    for layer_name, features in ctx.layers.items():
+        upper = layer_name.upper()
+        if not any(tok in upper for tok in _POINT_LAYER_TOKENS) or upper.startswith("L_"):
+            continue
+        seen = {}
+        for feat in features:
+            xy = _point_xy(feat)
+            if xy is None:
+                continue
+            code = str(feat.properties.get("CODE") or getattr(feat, "feature_id", "") or "").strip()
+            if not code:
+                continue
+            key = (round(xy[0], 6), round(xy[1], 6))
+            other = seen.get(key)
+            if other is not None and other != code:
+                results.append(CheckResult(
+                    check_object=f"点状实体 {other} 与 {code}",
+                    passed=False,
+                    problem_location=f"坐标 ({xy[0]:.6f}, {xy[1]:.6f})",
+                    actual_value="完全相同坐标",
+                    expected_value="不同实体坐标应相互独立（欧氏距离 > 0）",
+                    rule_id="R-GIS-007",
+                    error_description=f"图层 {layer_name} 中 {other} 与 {code} 拥有完全相同的经纬度坐标 ({xy[0]:.6f}, {xy[1]:.6f})，疑似制图坐标重合错漏",
+                    severity="error",
+                ))
+            else:
+                seen.setdefault(key, code)
+    return results
+
+
+def check_cable_capacity_business_compat(ctx: RuleContext) -> List[CheckResult]:
+    """R-FIBER-003：DISTRIBUTION 光缆 CAPACITE>0 且 ≥ NB_FIBRE_U / NB_FIBRE_D（TC-21）。"""
+    results = []
+    for layer_name, features in ctx.layers.items():
+        upper = layer_name.upper()
+        if "CABLE" not in upper or upper.startswith("L_"):
+            continue
+        for feat in features:
+            props = feat.properties
+            if str(props.get("TYPE_CABLE") or "").upper() != "DISTRIBUTION":
+                continue
+            code = str(props.get("CODE") or getattr(feat, "feature_id", "") or "").strip()
+            cap = _as_float(props.get("CAPACITE"))
+            u = _as_float(props.get("NB_FIBRE_U"))
+            d = _as_float(props.get("NB_FIBRE_D"))
+            if cap is None:
+                continue
+            if cap <= 0:
+                results.append(CheckResult(
+                    check_object=f"分配光缆 {code}",
+                    passed=False,
+                    problem_location="字段 CAPACITE",
+                    actual_value=f"CAPACITE={cap:g}, NB_FIBRE_U={u if u is not None else '-'}",
+                    expected_value="CAPACITE > 0",
+                    rule_id="R-FIBER-003",
+                    error_description=f"配线光缆 {code} 的业务类型为 TYPE_CABLE=DISTRIBUTION（分配光缆），但容量字段填入 CAPACITE={cap:g}，同时在用纤芯 NB_FIBRE_U={u if u is not None else '-'}，总容量为零却已占用纤芯，逻辑矛盾",
+                    severity="error",
+                ))
+            elif (u is not None and u > cap) or (d is not None and d > cap):
+                results.append(CheckResult(
+                    check_object=f"分配光缆 {code}",
+                    passed=False,
+                    problem_location="字段 CAPACITE / NB_FIBRE_U / NB_FIBRE_D",
+                    actual_value=f"CAPACITE={cap:g}, NB_FIBRE_U={u if u is not None else '-'}, NB_FIBRE_D={d if d is not None else '-'}",
+                    expected_value="CAPACITE ≥ NB_FIBRE_U 且 ≥ NB_FIBRE_D",
+                    rule_id="R-FIBER-003",
+                    error_description=f"配线光缆 {code} 容量 CAPACITE={cap:g}，小于在用纤芯 {u if u is not None else '-'} 或已分配纤芯 {d if d is not None else '-'}",
+                    severity="error",
+                ))
+        break
+    return results
+
+
+def check_lifecycle_mount_exclusivity(ctx: RuleContext) -> List[CheckResult]:
+    """R-LIFE-001：在用/规划实体不得挂载或依附于废弃（ABANDONNE）支撑件（TC-22）。"""
+    results = []
+    ptech = {}
+    for layer_name, features in ctx.layers.items():
+        upper = layer_name.upper()
+        if "PTECH" not in upper or upper.startswith("L_"):
+            continue
+        for feat in features:
+            code = str(feat.properties.get("CODE") or "").strip()
+            if code:
+                ptech[code] = str(feat.properties.get("STATUT") or "").strip().upper()
+        break
+    infra = {}
+    for layer_name, features in ctx.layers.items():
+        upper = layer_name.upper()
+        if "INFRASTRUCTURE" not in upper or upper.startswith("L_"):
+            continue
+        for feat in features:
+            code = str(feat.properties.get("CODE") or "").strip()
+            if code:
+                infra[code] = str(feat.properties.get("STATUT") or "").strip().upper()
+        break
+
+    def _abandoned(s):
+        return s in _ABANDONED_STATUTS
+
+    for layer_name, features in ctx.layers.items():
+        upper = layer_name.upper()
+        if "BOITE" not in upper or upper.startswith("L_") or "TYPE BOITE" in upper:
+            continue
+        for feat in features:
+            props = feat.properties
+            child_statut = str(props.get("STATUT") or "").strip().upper()
+            if _abandoned(child_statut) or not child_statut:
+                continue
+            support_code = str(props.get("CODE_PTC") or "").strip()
+            support_statut = ptech.get(support_code, "")
+            if support_code and _abandoned(support_statut):
+                results.append(CheckResult(
+                    check_object=f"箱体 {props.get('CODE')}",
+                    passed=False,
+                    problem_location="字段 CODE_PTC / STATUT",
+                    actual_value=f"STATUT={child_statut}, 支撑件 {support_code} STATUT={support_statut}",
+                    expected_value="在用/规划实体不得挂载于废弃支撑件",
+                    rule_id="R-LIFE-001",
+                    error_description=f"现网在用/规划中的 {props.get('CODE')}（STATUT={child_statut}）通过 CODE_PTC={support_code} 挂载在已废弃（STATUT={support_statut}）的支撑件上",
+                    severity="error",
+                ))
+        break
+    for layer_name, features in ctx.layers.items():
+        upper = layer_name.upper()
+        if "CABLE" not in upper or upper.startswith("L_"):
+            continue
+        for feat in features:
+            props = feat.properties
+            child_statut = str(props.get("STATUT") or "").strip().upper()
+            if _abandoned(child_statut) or not child_statut:
+                continue
+            infra_code = str(props.get("CODE_INFRA") or "").strip()
+            infra_statut = infra.get(infra_code, "")
+            if infra_code and _abandoned(infra_statut):
+                results.append(CheckResult(
+                    check_object=f"光缆 {props.get('CODE')}",
+                    passed=False,
+                    problem_location="字段 CODE_INFRA / STATUT",
+                    actual_value=f"STATUT={child_statut}, 基础设施 {infra_code} STATUT={infra_statut}",
+                    expected_value="在用/规划光缆不得依附废弃基础设施",
+                    rule_id="R-LIFE-001",
+                    error_description=f"现网在用/规划中的光缆 {props.get('CODE')}（STATUT={child_statut}）依附在已废弃（STATUT={infra_statut}）的基础设施 {infra_code} 上",
+                    severity="error",
+                ))
+        break
+    return results
+
+
+def check_support_capacity_limit(ctx: RuleContext) -> List[CheckResult]:
+    """R034：支撑件挂载设备数上限（字段阈值 + 实际下挂统计，TC-23）。"""
+    results = []
+    ptech_feats = []
+    for layer_name, features in ctx.layers.items():
+        upper = layer_name.upper()
+        if "PTECH" not in upper or upper.startswith("L_"):
+            continue
+        ptech_feats = list(features)
+        break
+    if not ptech_feats:
+        return results
+    actual_count = defaultdict(int)
+    for layer_name, features in ctx.layers.items():
+        upper = layer_name.upper()
+        if "BOITE" not in upper or upper.startswith("L_") or "TYPE BOITE" in upper:
+            continue
+        for feat in features:
+            c = str(feat.properties.get("CODE_PTC") or "").strip()
+            if c:
+                actual_count[c] += 1
+        break
+    for feat in ptech_feats:
+        props = feat.properties
+        code = str(props.get("CODE") or getattr(feat, "feature_id", "") or "").strip()
+        nb = _as_float(props.get("NB_BOITIER"))
+        if nb is not None and (nb < 0 or nb > _SUPPORT_BOITIER_MAX):
+            results.append(CheckResult(
+                check_object=f"支撑件 {code}",
+                passed=False,
+                problem_location="字段 NB_BOITIER",
+                actual_value=f"NB_BOITIER={nb:g}",
+                expected_value=f"0 ≤ NB_BOITIER ≤ {_SUPPORT_BOITIER_MAX}",
+                rule_id="R034",
+                error_description=f"支撑件 {code} 的挂载设备数 NB_BOITIER={nb:g} 超出物理承载上限（{_SUPPORT_BOITIER_MAX}），数值非法",
+                severity="error",
+            ))
+        elif code:
+            cnt = actual_count.get(code, 0)
+            if cnt > _SUPPORT_BOITIER_MAX:
+                results.append(CheckResult(
+                    check_object=f"支撑件 {code}",
+                    passed=False,
+                    problem_location="拓扑挂载统计",
+                    actual_value=f"实际下挂设备 {cnt} 个",
+                    expected_value=f"≤ {_SUPPORT_BOITIER_MAX}",
+                    rule_id="R034",
+                    error_description=f"支撑件 {code} 实际关联的下挂设备共 {cnt} 个，超过物理承载上限（{_SUPPORT_BOITIER_MAX}）",
+                    severity="error",
+                ))
+    return results
 ALL_RULES = {
     "R001": check_file_missing,
     "R002": check_layer_missing,
@@ -3142,4 +3370,8 @@ ALL_RULES = {
     "R006_6": check_cable_endpoint_on_boite,
     "R007_1": check_pbo_nb_fibre_util_exceeds_capacite,
     "R007_2": check_pm_pbo_port_exceeds_cable_capacity,
+    "R-GIS-007": check_point_coordinate_overlap,
+    "R-FIBER-003": check_cable_capacity_business_compat,
+    "R-LIFE-001": check_lifecycle_mount_exclusivity,
+    "R034": check_support_capacity_limit,
 }
