@@ -1,7 +1,7 @@
 """安全距离检查（基于施工安全材料）。
 
 规则编号（本模块自定，来源=施工图安全注意事项）：
-- R-SAFE-001 墙壁光缆最低离地高度 >= 4.5m（GB 51158-2015 6.4.14 标准值 3m，取偏严 4.5m）
+- R-SAFE-001 墙壁光缆最低离地高度 >= 3m（GB 51158-2015 6.4.14 标准值）
 - R-SAFE-002 架空光缆跨越公路最低离地高度 >= 5.5m（YD/T 5102-2024 表11）
 - R-SAFE-003 光缆与电力线交越垂直净距（10KV 以下：有防雷保护 2m/无 4m；35KV~110KV：3m/5m）
 - R-SAFE-004~009 墙壁光缆与其他管线最小间距（平行/交叉，按配置的净距表）
@@ -128,7 +128,7 @@ def _min_line_distance_m(line1, line2, crs: Optional[str]) -> Optional[float]:
 
 
 def check_ground_height(proj, cfg: dict) -> tuple:
-    """R-SAFE-001/002：光缆最低离地高度（4.5m 墙壁 / 7m 架空跨路）。"""
+    """R-SAFE-001/002：光缆最低离地高度（3m 墙壁 / 7m 架空跨路）。"""
     issues, skipped = [], []
     _, cables = _layer(proj, "CABLE")
     for f in cables:

@@ -22,7 +22,7 @@ def _proj(layers):
 
 def test_config_values_from_material():
     cfg = _load_config()
-    assert cfg["wall_cable"]["min_ground_height_m"] == 4.5
+    assert cfg["wall_cable"]["min_ground_height_m"] == 3.0  # GB 51158-2015 6.4.14 标准值
     assert cfg["aerial_cable"]["road_crossing_min_ground_height_m"] == 5.5
     assert cfg["wall_cable_clearances_mm"]["避雷线接地引线"] == {"parallel_mm": 1000, "crossing_mm": 300}
     assert cfg["wall_cable_clearances_mm"]["电力线"] == {"parallel_mm": 200, "crossing_mm": 100}
@@ -31,7 +31,7 @@ def test_config_values_from_material():
 
 
 def test_ground_height_3d():
-    low = _feat("CABLE", 0, LineString([(0, 0, 3.0), (1, 1, 4.0)]), {"CODE": "C-1"})
+    low = _feat("CABLE", 0, LineString([(0, 0, 2.0), (1, 1, 4.0)]), {"CODE": "C-1"})
     ok = _feat("CABLE", 1, LineString([(0, 0, 5.0), (1, 1, 6.0)]), {"CODE": "C-2"})
     data = run_safety_checks(_proj({"CABLE": [low, ok]}))
     ids = {i["object_id"]: i["rule_id"] for i in data["issues"]}
