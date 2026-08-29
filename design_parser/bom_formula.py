@@ -56,9 +56,10 @@ def apply_reserve_m(counts: dict, params: dict, net_qty: float = None) -> tuple:
     # 光缆弯曲增长（YD/T 5102-2024 表4：直埋 7‰、管道 10‰、架空 7~10‰）
     bend_permille = _num(counts.get("bend_permille"))
     if bend_permille > 0 and net_qty is not None and net_qty > 0:
-        v = net_qty * bend_permille / 1000.0
+        # net_qty 单位恒为 KM：增长米数 = KM × ‰（100KM × 7‰ = 700m），旧实现多除 1000 少算三个数量级
+        v = net_qty * bend_permille
         total += v
-        parts.append(f"弯曲增长 {bend_permille:g}‰ × {net_qty:g}{'KM' if net_qty < 1000 else 'm'}")
+        parts.append(f"弯曲增长 {bend_permille:g}‰ × {net_qty:g}KM")
     return total, "；".join(parts) if parts else "无预留场景"
 
 

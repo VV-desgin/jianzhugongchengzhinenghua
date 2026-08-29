@@ -45,6 +45,35 @@ def test_collect_code_column_finds_code_after_5000_rows(tmp_path):
     assert len(old["rows"]) == 1000
 
 
+def test_collect_code_column_small_bom_table(tmp_path):
+    """回归：不足 HEADER_SCAN_ROWS(10) 行的小 BOM 表也必须收集编码（表尾补扫未置 scan_done 导致漏检）。"""
+    xlsx = tmp_path / "BOM物料.xlsx"
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "BOM物料"
+    ws.append(["物料编码", "物料描述", "单位", "数量"])
+    ws.append(["500099999", "异常物料", "PC", 1])
+    wb.save(xlsx)
+    wb.close()
+    codes = collect_code_column(xlsx, sheet="BOM物料")
+    assert codes == {"500099999"}
+
+
+def test_collect_code_column_no_code_keyword_returns_empty(tmp_path):
+    """表头无任何编码关键词时，不得把第 0 列（如名称）当编码收集。"""
+    xlsx = tmp_path / "无编码表.xlsx"
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Sheet1"
+    ws.append(["名称", "数量"])
+    ws.append(["ADSS光缆", 2])
+    ws.append(["钢绞线", 5])
+    wb.save(xlsx)
+    wb.close()
+    codes = collect_code_column(xlsx, sheet="Sheet1")
+    assert codes == set()
+
+
 def test_r_bom_001_detects_deep_code(tmp_path):
     """check_bom_material_match 检出埋在 5000 行之后的异常码，且 severity=error。"""
     root = tmp_path / "pkg"

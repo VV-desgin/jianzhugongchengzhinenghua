@@ -83,6 +83,49 @@ def test_bom_params_source_marked():
         assert ("依据" in it["数据来源"] or "待官方确认" in it["数据来源"])
 
 
+def test_pole_79m_maps_to_7m_pole_not_9m():
+    """电杆高度 7.9m 不得因子串 "9" 误判为 9m 杆。"""
+    eng = _eng({"cable": [], "boite": [], "site": [], "infrastructure": [],
+                "ptech": [{"code": "P1", "type": "7m 4英寸", "hauteur_appui": 7.9}]})
+    result = build_bom(eng)
+    codes = [it["物料编码"] for it in result["bom_items"]]
+    assert "500002480" in codes      # 7m 4英寸
+    assert "500002337" not in codes  # 不得误判 9m
+
+
+def test_pole_unknown_height_marked_unlisted():
+    """官方库外杆型（12m）不得静默按 7m 出料，应输出未收录行。"""
+    eng = _eng({"cable": [], "boite": [], "site": [], "infrastructure": [],
+                "ptech": [{"code": "P2", "type": "12m", "hauteur_appui": 12}]})
+    result = build_bom(eng)
+    unlisted = [it for it in result["bom_items"] if it["物料编码"] == "未收录"]
+    assert any("12" in it["计算依据"] for it in unlisted)
+
+
+def test_global_items_have_explicit_process_mapping():
+    """项目管理/仓储/勘察/竣工图 4 个全局项的工序与使用位置不得为待确认。"""
+    eng = _eng({"cable": [], "boite": [], "ptech": [], "site": [], "infrastructure": []})
+    result = build_bom(eng)
+    for code in ("500001887", "500001853", "500001519", "500002108"):
+        item = next(it for it in result["bom_items"] if it["物料编码"] == code)
+        assert item["对应工序"] != "待确认", code
+        assert item["使用位置"] != "待确认", code
+
+
+def test_cable_bend_growth_uses_business_params():
+    """弯曲增长率必须读取 business_params（duct=7‰ 时比 10‰ 少 0.3KM/100KM）。"""
+    eng = _eng({"cable": [{"code": "C1", "longueur": 100.0, "capacite": 24,
+                             "origine": "A", "extremite": "B"}],
+                "boite": [], "ptech": [], "site": [], "infrastructure": []})
+    p10 = load_business_params()
+    p10["reserve_lengths"]["bend_growth_permille"]["duct"] = 10
+    p7 = load_business_params()
+    p7["reserve_lengths"]["bend_growth_permille"]["duct"] = 7
+    r10 = next(it for it in build_bom(eng, params=p10)["bom_items"] if it["物料编码"] == "500002050")
+    r7 = next(it for it in build_bom(eng, params=p7)["bom_items"] if it["物料编码"] == "500002050")
+    assert r7["预留数量"] == pytest.approx(r10["预留数量"] - 0.3, abs=1e-6)
+
+
 def test_fiber_assignments_generation():
     """已用芯数>0 的光缆生成预置占用（tube/fiber/core 与纤芯工具一致）。"""
     ctx = _FakeCtx({

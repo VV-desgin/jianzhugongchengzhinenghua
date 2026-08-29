@@ -240,6 +240,8 @@ async def health():
 @app.get("/tf/{filename}")
 async def serve_test_file(filename: str):
     """临时测试桥接：提供 /tmp/tf 下的工程文件供 Dify remote_url 下载。"""
+    if not _ENABLE_TF_BRIDGE:
+        raise HTTPException(404, "file not found")
     base = Path("/tmp/tf")
     base_resolved = base.resolve()
     target = (base / filename).resolve()
@@ -315,6 +317,8 @@ def _store_project(project_id: str, proj) -> None:
 
 # 内网/保留地址前缀（SSRF 防护）
 _SAFE_FETCH_MAX_BYTES = 200 * 1024 * 1024  # 200MB
+_MAX_UPLOAD_BYTES = 1024 * 1024 * 1024  # 上传文件上限 1GB（流式读取计数，防内存 DoS）
+_ENABLE_TF_BRIDGE = os.environ.get("ENABLE_TF_BRIDGE", "1") == "1"  # /tf 测试桥开关：默认开启以支撑 Dify remote_url，生产可置 0 关闭
 
 
 def _is_private_ip(host: str) -> bool:
@@ -327,8 +331,8 @@ def _is_private_ip(host: str) -> bool:
             or ip.is_reserved or ip.is_multicast or ip.is_unspecified)
 
 
-def _safe_fetch_url(url: str, max_bytes: int = _SAFE_FETCH_MAX_BYTES) -> bytes:
-    """校验协议/主机并流式下载（限制大小），防 SSRF 与内存 DoS。"""
+def _validate_url_host(url: str) -> None:
+    """校验 file_url 的协议与主机，拒绝本机/内网/保留地址（防 SSRF）；DNS 解析失败一律拒绝。"""
     if not url.startswith(("http://", "https://")):
         raise HTTPException(400, "file_url 仅支持 http/https 协议")
     parsed = urlparse(url)
@@ -337,19 +341,29 @@ def _safe_fetch_url(url: str, max_bytes: int = _SAFE_FETCH_MAX_BYTES) -> bytes:
     host = parsed.hostname
     if host in ("localhost", "127.0.0.1", "::1"):
         raise HTTPException(400, "file_url 禁止访问本机/内网地址")
+    import socket
     try:
-        import socket
-        for info in socket.getaddrinfo(host, None):
-            if _is_private_ip(info[4][0]):
-                raise HTTPException(400, "file_url 禁止访问内网/保留地址")
-    except HTTPException:
-        raise
-    except Exception:
-        pass
-    import asyncio
-    async def _dl():
-        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
-            async with client.stream("GET", url) as resp:
+        infos = socket.getaddrinfo(host, None)
+    except OSError:
+        raise HTTPException(400, f"file_url 无法解析主机: {host}")
+    for info in infos:
+        if _is_private_ip(info[4][0]):
+            raise HTTPException(400, "file_url 禁止访问内网/保留地址")
+
+
+async def _safe_fetch_url(url: str, max_bytes: int = _SAFE_FETCH_MAX_BYTES) -> bytes:
+    """逐跳校验主机并流式下载（限制大小），跟随重定向时每一跳都重新做 SSRF 校验。"""
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=False) as client:
+        current = url
+        for _hop in range(6):
+            _validate_url_host(current)
+            async with client.stream("GET", current) as resp:
+                if resp.status_code in (301, 302, 303, 307, 308):
+                    loc = resp.headers.get("location")
+                    if not loc:
+                        raise HTTPException(400, "file_url 重定向缺少 Location")
+                    current = str(httpx.URL(current).join(loc))
+                    continue
                 resp.raise_for_status()
                 chunks = []
                 total = 0
@@ -359,7 +373,22 @@ def _safe_fetch_url(url: str, max_bytes: int = _SAFE_FETCH_MAX_BYTES) -> bytes:
                         raise HTTPException(413, f"file_url 下载超过大小上限 {max_bytes // (1024*1024)}MB")
                     chunks.append(chunk)
                 return b"".join(chunks)
-    return asyncio.run(_dl())
+        raise HTTPException(400, "file_url 重定向次数过多")
+
+
+async def _read_upload_bytes(file: UploadFile, max_bytes: Optional[int] = None) -> bytes:
+    """流式读取上传文件，超限抛 413，避免匿名上传打爆内存。"""
+    if max_bytes is None:
+        max_bytes = _MAX_UPLOAD_BYTES
+    data = bytearray()
+    while True:
+        chunk = await file.read(1024 * 1024)
+        if not chunk:
+            break
+        data.extend(chunk)
+        if len(data) > max_bytes:
+            raise HTTPException(413, f"上传文件超过大小上限 {max_bytes // (1024 * 1024)}MB")
+    return bytes(data)
 
 def build_response(data=None, success=True, error=None):
     return ApiResponse(success=success, data=data, error=error).model_dump()
@@ -764,7 +793,7 @@ def suggest_unrecognized_field_mappings(proj: ProjectData) -> List[Dict]:
 async def inspect_single_file(file: UploadFile = File(...)):
     """单文件识别（Excel/PDF/CSV/SHP/DBF/压缩包等）：返回类别与解析建议，不入库。"""
     original_filename = file.filename or "unknown"
-    content = await file.read()
+    content = await _read_upload_bytes(file)
     suffix = Path(original_filename).suffix
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
     try:
@@ -783,7 +812,7 @@ async def load_project(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="仅支持 zip/rar 格式")
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
     try:
-        content = await file.read()
+        content = await _read_upload_bytes(file)
         tmp.write(content)
         tmp.close()
         proj_id = str(uuid.uuid4())[:8]
@@ -1077,11 +1106,11 @@ async def full_pipeline(
     """全流程：文件识别 → 工程加载 → 审查 → 调用 LLM 生成报告"""
     if file is not None:
         original_filename = file.filename
-        content = await file.read()
+        content = await _read_upload_bytes(file)
         suffix = Path(original_filename).suffix
     elif file_url is not None:
         try:
-            content = _safe_fetch_url(file_url)
+            content = await _safe_fetch_url(file_url)
             original_filename = file_url.rstrip("/").split("/")[-1]
             if not original_filename or "." not in original_filename:
                 original_filename = "downloaded_file.zip"
@@ -1157,7 +1186,7 @@ async def full_pipeline(
                         f"请修复 {obj} 的异常：{desc}"
                     )
             partial_data = {
-                "layers_info": layers_info if 'layers_info' in dir() else [],
+                "layers_info": layers_info,
                 "review_summary": {
                     "total_checks": total_checks,
                     "passed": passed_count,
@@ -1282,11 +1311,11 @@ async def auto_review(
     """自动识别文件类型，执行对应规则集，返回审查摘要"""
     if file is not None:
         original_filename = file.filename
-        content = await file.read()
+        content = await _read_upload_bytes(file)
         suffix = Path(original_filename).suffix
     elif file_url is not None:
         try:
-            content = _safe_fetch_url(file_url)
+            content = await _safe_fetch_url(file_url)
             original_filename = file_url.rstrip("/").split("/")[-1]
             if not original_filename or "." not in original_filename:
                 original_filename = "downloaded_file.zip"
@@ -1400,11 +1429,11 @@ async def data_pipeline(
     """
     if file is not None:
         original_filename = file.filename
-        content = await file.read()
+        content = await _read_upload_bytes(file)
         suffix = Path(original_filename).suffix
     elif file_url is not None:
         try:
-            content = _safe_fetch_url(file_url)
+            content = await _safe_fetch_url(file_url)
             original_filename = file_url.rstrip("/").split("/")[-1]
             if not original_filename or "." not in original_filename:
                 original_filename = "downloaded_file.zip"
@@ -1544,6 +1573,8 @@ async def data_pipeline(
                     ctx = RuleContext(proj)
                     rule_params = {}
                     if rid == "R002":
+                        # 部分类别（场勘设计图/Excel 纯表格包）允许缺少部分官方图层：
+                        # 只要存在 BOITE 图层就不做强制的全量 8 图层 fatal，避免误报（2026-08-30 补注释，行为未变）
                         lower_layers = [l.lower() for l in proj.layers]
                         if "boite" in lower_layers:
                             rule_params["required_layers"] = ["BOITE"]
@@ -1745,11 +1776,11 @@ async def orchestrate(
     request_id = uuid.uuid4().hex[:12]
     if file is not None:
         original_filename = file.filename
-        content = await file.read()
+        content = await _read_upload_bytes(file)
         suffix = Path(original_filename).suffix
     elif file_url is not None:
         try:
-            content = _safe_fetch_url(file_url)
+            content = await _safe_fetch_url(file_url)
             original_filename = file_url.rstrip("/").split("/")[-1]
             if not original_filename or "." not in original_filename:
                 original_filename = "downloaded_file.zip"

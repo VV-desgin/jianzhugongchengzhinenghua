@@ -128,7 +128,7 @@ def _min_line_distance_m(line1, line2, crs: Optional[str]) -> Optional[float]:
 
 
 def check_ground_height(proj, cfg: dict) -> tuple:
-    """R-SAFE-001/002：光缆最低离地高度（3m 墙壁 / 7m 架空跨路）。"""
+    """R-SAFE-001/002：光缆最低离地高度（墙壁 3m GB 51158-2015 6.4.14 / 架空跨路 5.5m YD/T 5102-2024 表11）。"""
     issues, skipped = [], []
     _, cables = _layer(proj, "CABLE")
     for f in cables:

@@ -64,6 +64,10 @@ _MATERIAL_PROCESS = {
     MAT_STEEL_WIRE: ("光纤接续", "架空杆路"),
     MAT_TEST: ("光学测试", "PCP/光箱"),
     MAT_PERMIT: ("前置", "光缆路由"),
+    MAT_PROJECT_MGMT: ("全局", "项目整体"),  # 官方映射表 3-6 行全局工程项
+    MAT_WAREHOUSE: ("全局", "项目整体"),
+    MAT_SURVEY: ("全局", "项目整体"),
+    MAT_ASBUILT: ("全局", "项目整体"),
 }
 
 _MATERIAL_NAMES = {
@@ -121,7 +125,18 @@ def _pole_material(ptech: dict) -> str:
     """按电杆高度/类型映射 4 类电杆物料（映射表 9-12 行）。"""
     h = _obj_field(ptech, "hauteur_appui", "hauteur", "height")
     t = _obj_field(ptech, "type", "TYPE")
-    if "9" in h:
+    try:
+        hv = float(h)
+    except (TypeError, ValueError):
+        hv = None
+    if hv is not None:
+        # 官方杆型仅 7m/9m：<8.5m 按 7m；8.5~9.5m 按 9m；其余（如 12m）不静默映射
+        if hv < 8.5:
+            return MAT_POLE_7M_4IN
+        if hv <= 9.5:
+            return MAT_POLE_9M_4IN
+        return None
+    if "9" in t:
         return MAT_POLE_9M_4IN
     if "3" in t or "3 inch" in t.lower():
         return MAT_POLE_7M_3IN
@@ -220,7 +235,7 @@ def build_bom(engineering_data: dict, params: dict = None) -> dict:
     if total_cable_km > 0 or zero_len or reused_cables:
         # 弯曲增长按 YD/T 5102-2024 表4：默认管道 10‰（可扩展按敷设方式细分）
         counts = {"splice": n_splice, "pole": len(ptechs), "endpoint": len(boites) + 1,
-                  "bend_permille": 10}
+                  "bend_permille": params.get("reserve_lengths", {}).get("bend_growth_permille", {}).get("duct", 10)}
         add(MAT_CABLE, total_cable_km, counts, f"{len(cables)}条光缆", cable_note, confirm=cable_confirm)
     if total_cable_km > 0 or zero_len or reused_cables:
         # 钢绞线：架空光缆配套，按光缆长度（M），500m/卷取整
@@ -230,8 +245,13 @@ def build_bom(engineering_data: dict, params: dict = None) -> dict:
     # 电杆：按高度/类型映射，利旧冲减（reuse=yes 不新建）
     pole_groups: Dict[str, int] = {}
     pole_reused: Dict[str, int] = {}
+    unknown_pole_types: Dict[str, int] = {}
     for pt in ptechs:
         m = _pole_material(pt)
+        if m is None:
+            t = _obj_field(pt, "type", "TYPE") or "UNKNOWN"
+            unknown_pole_types[t] = unknown_pole_types.get(t, 0) + 1
+            continue
         pole_groups[m] = pole_groups.get(m, 0) + 1
         if _is_reuse(pt, params):
             pole_reused[m] = pole_reused.get(m, 0) + 1
@@ -241,6 +261,10 @@ def build_bom(engineering_data: dict, params: dict = None) -> dict:
         note = f"设计{total}根" + (f"，利旧冲减{reused}根" if reused else "")
         confirm = "自动匹配" if reused == 0 else "待人工确认"
         add(m, new_qty, {}, f"{total}根电杆", note, confirm=confirm)
+    for t, n in unknown_pole_types.items():
+        add("未收录", float(n), {}, f"{n}根非标电杆",
+            f"非标/未收录电杆类型 '{t}'（高度不在官方 7m/9m 杆型）不在官方物料库，数量待人工确认",
+            confirm="待人工确认")
 
     # 箱体：按容量映射 FDT/16口，利旧冲减
     box_groups: Dict[str, int] = {}

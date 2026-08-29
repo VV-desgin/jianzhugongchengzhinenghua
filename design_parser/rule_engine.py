@@ -5,7 +5,6 @@ import json
 import yaml
 from pathlib import Path
 
-import pyproj
 from shapely.geometry import Point, LineString, Polygon
 
 from .feature import UnifiedFeature
@@ -14,10 +13,9 @@ from .check_result import CheckResult
 from .spatial_utils import (
     build_point_index,
     check_endpoint_on_device,
-    check_point_in_polygon,
     check_cable_crossing,
     min_distance,
-    point_geodesic_distance,
+    point_distance_m,
 )
 
 RULE_IDS = {
@@ -198,6 +196,17 @@ class RuleContext:
                     self.device_code_index[code] = None
 
 
+        # 数据坐标系：优先工程级 CRS，其次取第一个带 original_crs 的要素（投影数据距离计算用）
+        self.crs = getattr(project_data, "crs", None)
+        if not self.crs:
+            for _name in self.layers:
+                for _f in (self.layers[_name] or []):
+                    _c = getattr(_f, "original_crs", None)
+                    if _c:
+                        self.crs = _c
+                        break
+                if self.crs:
+                    break
         # 官方规则库（图层字段说明/可执行条件），由 ProjectData 缓存，解析失败时置空
         self.rule_library = None
         try:
@@ -822,7 +831,7 @@ def check_cable_endpoint_on_device(ctx: RuleContext, tolerance: float = 0.5) -> 
         if geom is None or not isinstance(geom, LineString):
             continue
         ok, missing_start, missing_end = check_endpoint_on_device(
-            geom, index, codes, tolerance
+            geom, index, codes, tolerance, crs=getattr(ctx, "crs", None)
         )
         if not ok:
             problem = f"{missing_start or ''} {missing_end or ''}".strip()
@@ -958,9 +967,6 @@ def _find_fiber_excel_sheets(ctx: RuleContext) -> Dict[str, Dict[str, Any]]:
                 continue
             wanted = [
                 n for n in names
-            ]
-            wanted = [
-                n for n in names
                 if n == "纤芯连接与分配"
                 or any(k in n.lower() for k in FIBER_SHEET_KEYWORDS)
                 or re.match(r"^(SRO|BPE|PBO)[-_]", n)
@@ -977,32 +983,6 @@ def _find_fiber_excel_sheets(ctx: RuleContext) -> Dict[str, Dict[str, Any]]:
     return out
 
 
-def _collect_material_codes(ctx: RuleContext) -> set:
-    """从项目内 material_code_* / 物料编码 / 编码 文件中收集物料编码库。"""
-    from .bom_fiber_reader import EXCEL_EXTS, collect_code_column, list_sheet_names
-    codes = set()
-    for root in _project_roots(ctx):
-        for f in root.rglob("*"):
-            if not f.is_file() or f.suffix.lower() not in EXCEL_EXTS:
-                continue
-            low = f.name.lower()
-            is_lib = ("material" in low) or ("物料编码" in f.name) or ("bom_list" in low)
-            if not is_lib:
-                continue
-            try:
-                names = list_sheet_names(f)
-            except Exception:
-                continue
-            # 含 BOM物料 Sheet 的是被测案例文件，不是物料库（防自引用）
-            if any(n.strip().upper() == "BOM物料" for n in names):
-                continue
-            # P1-1：全量扫描所有工作表编码列（不限 5000 行，深埋异常码不再漏检）
-            for n in names:
-                try:
-                    codes |= collect_code_column(f, sheet=n)
-                except Exception:
-                    continue
-    return codes
 
 
 OFFICIAL_BOM_LIST_PATH = Path(__file__).resolve().parent.parent / "docs" / "官方固定数据" / "BOM_LIST.xlsx"
@@ -1678,7 +1658,6 @@ def check_pbo_coverage(ctx: RuleContext) -> List[CheckResult]:
 def check_cable_breakpoints(ctx: RuleContext, max_gap: float = 100.0) -> List[CheckResult]:
     """R023: 全局光缆端点连接性检查，检测孤立端点（最近邻距离 > max_gap 米）"""
     results = []
-    geod = pyproj.Geod(ellps='WGS84')
 
     all_endpoints = []
     for feat in _get_cable_features(ctx):
@@ -1700,7 +1679,7 @@ def check_cable_breakpoints(ctx: RuleContext, max_gap: float = 100.0) -> List[Ch
                 continue
             if code1 == code2:
                 continue
-            _, _, d = geod.inv(lon1, lat1, lon2, lat2)
+            d = point_distance_m(Point(lon1, lat1), Point(lon2, lat2), getattr(ctx, "crs", None))
             if d < min_dist:
                 min_dist = d
                 nearest_code = code2
@@ -1773,10 +1752,11 @@ def check_cable_device_endpoint_match(ctx: RuleContext, tolerance: float = 0.5) 
         start_pt = Point(geom.coords[0])
         end_pt = Point(geom.coords[-1])
 
-        d_o_s = point_geodesic_distance(pt_o, start_pt)
-        d_o_e = point_geodesic_distance(pt_o, end_pt)
-        d_e_s = point_geodesic_distance(pt_e, start_pt)
-        d_e_e = point_geodesic_distance(pt_e, end_pt)
+        crs = getattr(ctx, "crs", None)
+        d_o_s = point_distance_m(pt_o, start_pt, crs)
+        d_o_e = point_distance_m(pt_o, end_pt, crs)
+        d_e_s = point_distance_m(pt_e, start_pt, crs)
+        d_e_e = point_distance_m(pt_e, end_pt, crs)
 
         match1 = (d_o_s <= tolerance and d_e_e <= tolerance)
         match2 = (d_o_e <= tolerance and d_e_s <= tolerance)
@@ -2846,10 +2826,11 @@ def check_cable_endpoint_on_boite(ctx: RuleContext, tolerance: float = 0.5) -> L
         start_pt = Point(geom.coords[0])
         end_pt = Point(geom.coords[-1])
 
-        d_o_s = point_geodesic_distance(pt_o, start_pt)
-        d_o_e = point_geodesic_distance(pt_o, end_pt)
-        d_e_s = point_geodesic_distance(pt_e, start_pt)
-        d_e_e = point_geodesic_distance(pt_e, end_pt)
+        crs = getattr(ctx, "crs", None)
+        d_o_s = point_distance_m(pt_o, start_pt, crs)
+        d_o_e = point_distance_m(pt_o, end_pt, crs)
+        d_e_s = point_distance_m(pt_e, start_pt, crs)
+        d_e_e = point_distance_m(pt_e, end_pt, crs)
 
         match_normal = (d_o_s <= tolerance and d_e_e <= tolerance)
         match_reverse = (d_o_e <= tolerance and d_e_s <= tolerance)
@@ -2866,6 +2847,14 @@ def check_cable_endpoint_on_boite(ctx: RuleContext, tolerance: float = 0.5) -> L
             ))
 
     return results
+
+
+def _first_int(value) -> Optional[int]:
+    """提取字符串中的第一个连续整数（"12/24"→12），避免剥离非数字导致 1224。"""
+    if value is None:
+        return None
+    m = re.search(r"\d+", str(value))
+    return int(m.group()) if m else None
 
 
 def check_pbo_nb_fibre_util_exceeds_capacite(ctx: RuleContext) -> List[CheckResult]:
@@ -2888,11 +2877,8 @@ def check_pbo_nb_fibre_util_exceeds_capacite(ctx: RuleContext) -> List[CheckResu
             nb_fibre_util_raw = feat.properties.get('NB_FIBRE_UTIL') or feat.properties.get('NB_FIBRE_U')
             capacite_raw = feat.properties.get('CAPACITE')
 
-            try:
-                nb_fibre_util = int(re.sub(r'\D', '', str(nb_fibre_util_raw))) if nb_fibre_util_raw is not None else None
-                capacite = int(re.sub(r'\D', '', str(capacite_raw))) if capacite_raw is not None else None
-            except (ValueError, TypeError):
-                nb_fibre_util, capacite = None, None
+            nb_fibre_util = _first_int(nb_fibre_util_raw)
+            capacite = _first_int(capacite_raw)
 
             if nb_fibre_util is None or capacite is None:
                 continue
@@ -2921,10 +2907,7 @@ def check_pm_pbo_port_exceeds_cable_capacity(ctx: RuleContext) -> List[CheckResu
 
     def _extract_int(val):
         """提取整数值"""
-        try:
-            return int(re.sub(r'\D', '', str(val)))
-        except (ValueError, TypeError):
-            return None
+        return _first_int(val)
 
     def _get_type(feat):
         """获取类型，兼容 GPKG 的 TYPE_FONC 和 CODE 前缀"""

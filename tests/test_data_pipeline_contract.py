@@ -50,3 +50,32 @@ def test_data_pipeline_contract(client, upload_survey):
 
     assert isinstance(data["warnings"], list)
     assert isinstance(data["errors"], list)
+
+
+def test_validate_url_host_rejects_loopback_private_and_bad_scheme():
+    """file_url 主机校验：本机/内网/保留地址/非 http(s) 必须拒绝（防 SSRF）。"""
+    import pytest
+    from fastapi import HTTPException
+    from api import _validate_url_host
+    for url in ("http://127.0.0.1/x.zip", "http://localhost/x.zip", "http://10.1.2.3/x.zip",
+                 "http://169.254.169.254/latest/meta-data", "file:///etc/passwd"):
+        with pytest.raises(HTTPException):
+            _validate_url_host(url)
+
+
+def test_file_url_loopback_rejected_by_endpoint(client):
+    """data-pipeline 的 file_url 传内网地址返回 400 禁止访问，且不触发 asyncio.run 崩溃。"""
+    r = client.post("/agent/data-pipeline", data={"file_url": "http://169.254.169.254/latest/meta-data"})
+    assert r.status_code == 400
+    msg = (r.json().get("error") or {}).get("message") or ""
+    assert "禁止访问" in msg
+    assert "asyncio.run" not in msg
+
+
+def test_upload_size_cap_rejected(client, monkeypatch):
+    """上传超过 _MAX_UPLOAD_BYTES 必须 413 拒绝，不得全量读入内存。"""
+    import api as api_module
+    monkeypatch.setattr(api_module, "_MAX_UPLOAD_BYTES", 64)
+    r = client.post("/agent/inspect-file",
+                       files={"file": ("big.xlsx", b"x" * 200, "application/octet-stream")})
+    assert r.status_code == 413

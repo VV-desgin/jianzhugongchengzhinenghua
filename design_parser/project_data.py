@@ -1072,6 +1072,26 @@ class ProjectData:
         for r in results:
             if r.severity is None:
                 r.severity = SEVERITY_MAP.get(r.rule_id, "warning")
+        # 与 /agent/data-pipeline 对齐：并入 R-GIS 与 R-SAFE 模块结果（空间/安全规则）
+        if getattr(self, "layers", None):
+            try:
+                from .gis_rules import run_gis_checks
+                from .safety_rules import run_safety_checks
+                _sev_map = {"致命": "fatal", "高": "error", "中": "warning"}
+                for mod_issues in (run_gis_checks(self)["issues"], run_safety_checks(self)["issues"]):
+                    for iss in mod_issues:
+                        results.append(CheckResult(
+                            check_object=str(iss.get("object_type") or ""),
+                            passed=False,
+                            problem_location=str(iss.get("object_id") or ""),
+                            actual_value="",
+                            expected_value="",
+                            rule_id=str(iss.get("rule_id") or ""),
+                            error_description=str(iss.get("message") or ""),
+                            severity=_sev_map.get(str(iss.get("severity") or ""), "warning"),
+                        ))
+            except Exception:
+                pass
         return results
 
     def get_rule_library(self) -> dict:

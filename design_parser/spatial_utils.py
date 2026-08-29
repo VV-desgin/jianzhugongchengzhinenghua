@@ -37,21 +37,26 @@ def reproject_coords(coords, src_crs: Optional[str], dst_crs: Optional[str]):
         return coords
 
 
+def _is_geographic_crs(crs: Optional[str]) -> bool:
+    """判断 CRS 是否为经纬度坐标系；None 时按旧行为（默认经纬度）处理。"""
+    if crs:
+        try:
+            from pyproj import CRS
+            if CRS.from_user_input(crs).is_geographic:
+                return True
+        except Exception:
+            pass
+    low = (crs or "").lower()
+    return any(k in low for k in ("4326", "4490", "wgs84", "cgcs2000", "geograph"))
+
+
 def point_distance_m(p1: Point, p2: Point, crs: Optional[str] = None) -> float:
     """计算两点间距离（米）。
 
     经纬度坐标系（如 EPSG:4326/4490）使用测地线距离；
     投影坐标系（如 EPSG:26191）按平面坐标直接计算。
     """
-    if crs:
-        try:
-            from pyproj import CRS
-            if CRS.from_user_input(crs).is_geographic:
-                return point_geodesic_distance(p1, p2)
-        except Exception:
-            pass
-    low = (crs or "").lower()
-    if any(k in low for k in ("4326", "4490", "wgs84", "cgcs2000", "geograph")):
+    if _is_geographic_crs(crs):
         return point_geodesic_distance(p1, p2)
     return p1.distance(p2)
 
@@ -65,10 +70,12 @@ def build_point_index(points: List[Tuple[str, Point]]):
     return STRtree(geoms), codes
 
 def check_endpoint_on_device(cable_geom: LineString, point_index: Optional[STRtree],
-                             device_codes: List[str], tolerance: float = 0.5) -> Tuple[bool, Optional[str], Optional[str]]:
+                             device_codes: List[str], tolerance: float = 0.5,
+                             crs: Optional[str] = None) -> Tuple[bool, Optional[str], Optional[str]]:
     """
     检查光缆首尾端点是否与设备点重合。
-    tolerance: 测地线距离阈值，单位 米
+    tolerance: 距离阈值，单位 米（经纬度坐标时为测地线米，投影坐标时为坐标单位米）
+    crs: 数据坐标系；None/经纬度走测地线，投影坐标系走平面距离
     返回: (是否两端都重合, 起始缺失的设备码, 终止缺失的设备码)
     """
     if point_index is None or len(device_codes) == 0:
@@ -77,29 +84,24 @@ def check_endpoint_on_device(cable_geom: LineString, point_index: Optional[STRtr
     start_pt = Point(cable_geom.coords[0])
     end_pt = Point(cable_geom.coords[-1])
 
-    start_match = None
-    end_match = None
+    geographic = _is_geographic_crs(crs)
 
-    lat_start = start_pt.y
-    lat_end = end_pt.y
-    deg_tol_start = tolerance / _degrees_to_meters_approx(lat_start)
-    deg_tol_end = tolerance / _degrees_to_meters_approx(lat_end)
+    def _find(center: Point) -> Optional[str]:
+        if geographic:
+            lat = center.y
+            deg_tol = tolerance / _degrees_to_meters_approx(lat)
+            buf = center.buffer(deg_tol)
+        else:
+            buf = center.buffer(tolerance)
+        for idx in point_index.query(buf):
+            geom = point_index.geometries[idx]
+            d = point_geodesic_distance(center, geom) if geographic else center.distance(geom)
+            if d <= tolerance:
+                return device_codes[idx]
+        return None
 
-    buffer_start = start_pt.buffer(deg_tol_start)
-    candidates = point_index.query(buffer_start)
-    for idx in candidates:
-        geom = point_index.geometries[idx]
-        if point_geodesic_distance(start_pt, geom) <= tolerance:
-            start_match = device_codes[idx]
-            break
-
-    buffer_end = end_pt.buffer(deg_tol_end)
-    candidates = point_index.query(buffer_end)
-    for idx in candidates:
-        geom = point_index.geometries[idx]
-        if point_geodesic_distance(end_pt, geom) <= tolerance:
-            end_match = device_codes[idx]
-            break
+    start_match = _find(start_pt)
+    end_match = _find(end_pt)
 
     start_ok = start_match is not None
     end_ok = end_match is not None

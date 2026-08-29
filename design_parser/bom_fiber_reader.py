@@ -374,7 +374,7 @@ def collect_code_column(path: Path, sheet: Optional[str] = None,
                 s = str(h).upper() if h is not None else ""
                 if any(k.upper() in s for k in keywords):
                     return i
-            return 0
+            return -1  # 未命中编码关键词时不猜测列，避免把名称列当编码收集
 
         def feed(row: list) -> bool:
             """处理一行，返回 True 表示已收集够可以提前结束。"""
@@ -388,6 +388,8 @@ def collect_code_column(path: Path, sheet: Optional[str] = None,
                     for extra in header_rows[header_idx + 1:]:
                         if feed(extra):
                             return True
+                return False
+            if col < 0:
                 return False
             v = row[col] if col < len(row) else None
             if v is not None and str(v).strip():
@@ -416,6 +418,7 @@ def collect_code_column(path: Path, sheet: Optional[str] = None,
         if not scan_done and header_rows:
             header_idx = _detect_header_index(header_rows)
             col = find_col(header_rows[header_idx])
+            scan_done = True  # 表尾补扫：小表不足 HEADER_SCAN_ROWS 行时，剩余行应进入收集而非继续累积表头
             for extra in header_rows[header_idx + 1:]:
                 if feed(extra):
                     break
