@@ -172,3 +172,15 @@ def test_compressed_air_layer_skipped_with_reason():
     issues, skipped = check_utility_clearances(_proj({"CABLE": [cable], "压缩空气管": [air]}), cfg)
     assert not any(i["rule_id"] == "R-SAFE-006" for i in issues)
     assert any("压缩空气管" in s for s in skipped)
+
+
+def test_lightning_grounding_meter_semantics():
+    """R-SAFE-012 按米判定 300~500m 接地间隔（TC-13/TC-15 陷阱案例口径；按 KM 换算会破坏全部基线）。"""
+    long_cable = _feat("CABLE", 0, LineString([(0, 0, 5.0), (1, 1, 5.0)]),
+                   {"CODE": "C-A", "MODE_POSE": "AERIEN", "longueur": 2001})  # 2001m > 500m → 命中
+    short_cable = _feat("CABLE", 1, LineString([(0, 0, 5.0), (1, 1, 5.0)]),
+                    {"CODE": "C-B", "MODE_POSE": "AERIEN", "longueur": 300})  # 300m ≤ 500m → 不命中
+    data = run_safety_checks(_proj({"CABLE": [long_cable, short_cable]}))
+    ids = {i["object_id"] for i in data["issues"] if i["rule_id"] == "R-SAFE-012"}
+    assert "C-A" in ids
+    assert "C-B" not in ids

@@ -1164,9 +1164,16 @@ def check_cable_crossing_rule(ctx: RuleContext) -> List[CheckResult]:
         if geom and isinstance(geom, LineString):
             code = cable.code if isinstance(cable, Cable) else cable.properties.get('CODE')
             cable_geoms.append((code, geom))
-    for i in range(len(cable_geoms)):
-        for j in range(i+1, len(cable_geoms)):
-            code1, geom1 = cable_geoms[i]
+    if not cable_geoms:
+        return results
+    # O(n²) 全对比较 → STRtree 包围盒过滤候选（结果语义不变，大数据集提速）
+    from shapely.strtree import STRtree
+    tree = STRtree([g for _, g in cable_geoms])
+    for i, (code1, geom1) in enumerate(cable_geoms):
+        for j in tree.query(geom1):
+            j = int(j)
+            if j <= i:
+                continue
             code2, geom2 = cable_geoms[j]
             if check_cable_crossing(geom1, geom2):
                 results.append(CheckResult(

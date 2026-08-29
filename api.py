@@ -20,6 +20,7 @@ from fastapi import FastAPI, File, UploadFile, HTTPException, Body
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
+from starlette.concurrency import run_in_threadpool
 import httpx
 import yaml
 
@@ -149,9 +150,9 @@ _PIPELINE_CACHE_MAX_BYTES = 64 * 1024 * 1024
 _pipeline_cache: Dict[str, tuple] = {}  # key -> (ts, result)
 
 
-def _pipeline_cache_key(content: bytes, excel_limit: int, pdf_chars: int, include_tables: bool, compact: bool) -> str:
+def _pipeline_cache_key(content: bytes, filename: str, excel_limit: int, pdf_chars: int, include_tables: bool, compact: bool) -> str:
     digest = hashlib.sha256(content).hexdigest()
-    return f"{digest}|{excel_limit}|{pdf_chars}|{int(include_tables)}|{int(compact)}|{_PIPELINE_CACHE_VERSION}"
+    return f"{digest}|{filename}|{excel_limit}|{pdf_chars}|{int(include_tables)}|{int(compact)}|{_PIPELINE_CACHE_VERSION}"
 
 
 def _pipeline_cache_get(key: str) -> Optional[dict]:
@@ -163,6 +164,9 @@ def _pipeline_cache_get(key: str) -> Optional[dict]:
     if now - ts > _PIPELINE_CACHE_TTL_S:
         _pipeline_cache.pop(key, None)
         return None
+    # 命中刷新 LRU 顺序（dict 插入序 = 最近使用序），使淘汰语义符合 LRU 而非 FIFO
+    _pipeline_cache.pop(key, None)
+    _pipeline_cache[key] = (ts, data)
     return data
 
 
@@ -192,7 +196,7 @@ def _pipeline_cache_put(key: str, data: dict) -> None:
 
 
 projects: Dict[str, ProjectData] = {}
-last_full_results: Dict[str, List[CheckResult]] = {}
+last_full_results: Dict[str, tuple] = {}  # project_id -> (ts, results)；随项目 TTL 过期清理
 
 SERIOUS_SEVERITY_LEVELS = {"fatal"}
 
@@ -312,6 +316,8 @@ def _store_project(project_id: str, proj) -> None:
             except Exception:
                 pass
             logger.info(f"清理过期项目: {pid}")
+    for pid in [k for k, (ts, _r) in list(last_full_results.items()) if now - ts > _PROJECT_TTL_SECONDS]:
+        last_full_results.pop(pid, None)
 
 
 
@@ -351,29 +357,31 @@ def _validate_url_host(url: str) -> None:
             raise HTTPException(400, "file_url 禁止访问内网/保留地址")
 
 
-async def _safe_fetch_url(url: str, max_bytes: int = _SAFE_FETCH_MAX_BYTES) -> bytes:
-    """逐跳校验主机并流式下载（限制大小），跟随重定向时每一跳都重新做 SSRF 校验。"""
-    async with httpx.AsyncClient(timeout=30.0, follow_redirects=False) as client:
-        current = url
-        for _hop in range(6):
-            _validate_url_host(current)
-            async with client.stream("GET", current) as resp:
-                if resp.status_code in (301, 302, 303, 307, 308):
-                    loc = resp.headers.get("location")
-                    if not loc:
-                        raise HTTPException(400, "file_url 重定向缺少 Location")
-                    current = str(httpx.URL(current).join(loc))
-                    continue
-                resp.raise_for_status()
-                chunks = []
-                total = 0
-                async for chunk in resp.aiter_bytes():
-                    total += len(chunk)
-                    if total > max_bytes:
-                        raise HTTPException(413, f"file_url 下载超过大小上限 {max_bytes // (1024*1024)}MB")
-                    chunks.append(chunk)
-                return b"".join(chunks)
-        raise HTTPException(400, "file_url 重定向次数过多")
+def _safe_fetch_url_sync(url: str, max_bytes: int = _SAFE_FETCH_MAX_BYTES) -> bytes:
+    """逐跳校验主机并流式下载（限制大小）；同步版本供线程池端点调用。"""
+    current = url
+    for _hop in range(6):
+        _validate_url_host(current)
+        resp = requests.get(current, stream=True, allow_redirects=False, timeout=30)
+        try:
+            if resp.status_code in (301, 302, 303, 307, 308):
+                loc = resp.headers.get("location")
+                if not loc:
+                    raise HTTPException(400, "file_url 重定向缺少 Location")
+                current = str(requests.utils.urljoin(current, loc))
+                continue
+            resp.raise_for_status()
+            chunks = []
+            total = 0
+            for chunk in resp.iter_content(chunk_size=65536):
+                total += len(chunk)
+                if total > max_bytes:
+                    raise HTTPException(413, f"file_url 下载超过大小上限 {max_bytes // (1024*1024)}MB")
+                chunks.append(chunk)
+            return b"".join(chunks)
+        finally:
+            resp.close()
+    raise HTTPException(400, "file_url 重定向次数过多")
 
 
 async def _read_upload_bytes(file: UploadFile, max_bytes: Optional[int] = None) -> bytes:
@@ -383,6 +391,26 @@ async def _read_upload_bytes(file: UploadFile, max_bytes: Optional[int] = None) 
     data = bytearray()
     while True:
         chunk = await file.read(1024 * 1024)
+        if not chunk:
+            break
+        data.extend(chunk)
+        if len(data) > max_bytes:
+            raise HTTPException(413, f"上传文件超过大小上限 {max_bytes // (1024 * 1024)}MB")
+    return bytes(data)
+
+
+async def _safe_fetch_url(url: str, max_bytes: int = _SAFE_FETCH_MAX_BYTES) -> bytes:
+    """async 包装：下载放入线程池，避免阻塞事件循环（供遗留 async 端点使用）。"""
+    return await run_in_threadpool(_safe_fetch_url_sync, url, max_bytes)
+
+
+def _read_upload_bytes_sync(file: UploadFile, max_bytes: Optional[int] = None) -> bytes:
+    """同步流式读取上传文件（线程池端点使用），超限抛 413。"""
+    if max_bytes is None:
+        max_bytes = _MAX_UPLOAD_BYTES
+    data = bytearray()
+    while True:
+        chunk = file.file.read(1024 * 1024)
         if not chunk:
             break
         data.extend(chunk)
@@ -790,10 +818,10 @@ def suggest_unrecognized_field_mappings(proj: ProjectData) -> List[Dict]:
 
 
 @app.post("/agent/inspect-file", response_model=ApiResponse)
-async def inspect_single_file(file: UploadFile = File(...)):
+def inspect_single_file(file: UploadFile = File(...)):
     """单文件识别（Excel/PDF/CSV/SHP/DBF/压缩包等）：返回类别与解析建议，不入库。"""
     original_filename = file.filename or "unknown"
-    content = await _read_upload_bytes(file)
+    content = _read_upload_bytes_sync(file)
     suffix = Path(original_filename).suffix
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
     try:
@@ -806,16 +834,16 @@ async def inspect_single_file(file: UploadFile = File(...)):
 
 
 @app.post("/project/load", response_model=ApiResponse)
-async def load_project(file: UploadFile = File(...)):
+def load_project(file: UploadFile = File(...)):
     suffix = Path(file.filename).suffix
     if suffix.lower() not in ('.zip', '.rar'):
         raise HTTPException(status_code=400, detail="仅支持 zip/rar 格式")
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
     try:
-        content = await _read_upload_bytes(file)
+        content = _read_upload_bytes_sync(file)
         tmp.write(content)
         tmp.close()
-        proj_id = str(uuid.uuid4())[:8]
+        proj_id = str(uuid.uuid4())
         proj = ProjectData(tmp.name)
         _store_project(proj_id, proj)
         return build_response(data={"project_id": proj_id})
@@ -1083,18 +1111,20 @@ async def get_device_stats(project_id: str):
     return build_response(data={"total_devices": total, "by_layer": counts})
 
 @app.post("/project/{project_id}/rules/run-all-and-cache", response_model=ApiResponse)
-async def run_all_and_cache(project_id: str):
+def run_all_and_cache(project_id: str):
     proj = get_project(project_id)
     results = proj.run_all_rules()
-    last_full_results[project_id] = results
+    last_full_results[project_id] = (time.time(), results)
     output = [CheckResultOut(**r.model_dump()).model_dump() for r in results]
     return build_response(data=output)
 
 @app.get("/project/{project_id}/export", response_model=ApiResponse)
-async def export_results(project_id: str):
-    if project_id not in last_full_results:
-        raise HTTPException(status_code=404, detail="请先执行全量审查")
-    results = last_full_results[project_id]
+def export_results(project_id: str):
+    entry = last_full_results.get(project_id)
+    if entry is None or time.time() - entry[0] > _PROJECT_TTL_SECONDS:
+        last_full_results.pop(project_id, None)
+        raise HTTPException(status_code=404, detail="请先执行全量审查（结果已过期）")
+    results = entry[1]
     output = [CheckResultOut(**r.model_dump()).model_dump() for r in results]
     return build_response(data=output)
 
@@ -1136,11 +1166,11 @@ async def full_pipeline(
             raise HTTPException(400, detail="文件不可解析，无法继续")
 
         proj = ProjectData(archive_path)
-        project_id = str(uuid.uuid4())[:8]
+        project_id = str(uuid.uuid4())
         _store_project(project_id, proj)
 
         review_results = proj.run_all_rules()
-        last_full_results[project_id] = review_results
+        last_full_results[project_id] = (time.time(), review_results)
         layers_info = proj.get_layer_info() if hasattr(proj, 'get_layer_info') else []
 
         # P0-01：warning 不计入 failed_count，按严重等级统计（不改动 serious_issues 判定）
@@ -1345,7 +1375,7 @@ async def auto_review(
             }
 
         proj = ProjectData(archive_path)
-        project_id = str(uuid.uuid4())[:8]
+        project_id = str(uuid.uuid4())
         _store_project(project_id, proj)
 
         rule_ids = RULE_ROUTING.get(file_info["file_category"], [])
@@ -1411,7 +1441,7 @@ PROJECT_TYPE_MAP = {
 }
 
 @app.post("/agent/data-pipeline", response_model=DataPipelineResponse)
-async def data_pipeline(
+def data_pipeline(
     file: UploadFile = File(None),
     file_url: Optional[str] = Body(None),
     excel_limit: int = Body(0),
@@ -1429,11 +1459,11 @@ async def data_pipeline(
     """
     if file is not None:
         original_filename = file.filename
-        content = await _read_upload_bytes(file)
+        content = _read_upload_bytes_sync(file)
         suffix = Path(original_filename).suffix
     elif file_url is not None:
         try:
-            content = await _safe_fetch_url(file_url)
+            content = _safe_fetch_url_sync(file_url)
             original_filename = file_url.rstrip("/").split("/")[-1]
             if not original_filename or "." not in original_filename:
                 original_filename = "downloaded_file.zip"
@@ -1445,7 +1475,7 @@ async def data_pipeline(
     else:
         raise HTTPException(400, "请提供 file 或 file_url")
 
-    cache_key = _pipeline_cache_key(content, excel_limit, pdf_chars, include_tables, compact)
+    cache_key = _pipeline_cache_key(content, original_filename, excel_limit, pdf_chars, include_tables, compact)
     cached = _pipeline_cache_get(cache_key)
     if cached is not None:
         hit = dict(cached)
@@ -1514,6 +1544,7 @@ async def data_pipeline(
                 "objects": proj.get_engineering_data()["objects"],
             }
             result["business_params"] = load_business_params()
+            ctx = RuleContext(proj)  # 复用同一上下文：避免 47+ 规则各自重复扫描全部图层
             try:
                 fiber_tables = _collect_fiber_tables(proj)
                 if not compact and fiber_tables:
@@ -1522,7 +1553,7 @@ async def data_pipeline(
                 pass
             try:
                 from design_parser.rule_engine import build_fiber_assignments
-                fa = build_fiber_assignments(RuleContext(proj))
+                fa = build_fiber_assignments(ctx)
                 if fa:
                     result["engineering_data"]["fiber_assignments"] = fa
             except Exception:
@@ -1570,7 +1601,6 @@ async def data_pipeline(
                     if rid not in ALL_RULES:
                         continue
                     rule_func = ALL_RULES[rid]
-                    ctx = RuleContext(proj)
                     rule_params = {}
                     if rid == "R002":
                         # 部分类别（场勘设计图/Excel 纯表格包）允许缺少部分官方图层：
@@ -1672,6 +1702,7 @@ async def data_pipeline(
                 result["review"] = {
                     "total_rules": total_rules,
                     "warning_rules": warning_rules,
+                    "rule_count": len(rule_ids) + (18 if has_gis else 0),  # 覆盖规则数：引擎路由 + GIS6 + SAFE12（total_rules 仍为检查项数）
                     "passed_rules": passed_rules,
                     "failed_rules": failed_rules,
                     "categories": categories,
@@ -1717,8 +1748,8 @@ async def data_pipeline(
             result["excel_data"] = {"error": str(e)}
             result["warnings"].append(f"Excel 数据提取失败: {e}")
         try:
-            pkg = ProjectPackage(archive_path)
-            pdf_paths = list(pkg.temp_dir.rglob("*.pdf"))
+            pkg = getattr(proj, "package", None)  # 复用已解压包，避免重复解压
+            pdf_paths = list(pkg.temp_dir.rglob("*.pdf")) if pkg is not None else []
             pdf_text = {}
             for fp in pdf_paths:
                 try:
@@ -1809,7 +1840,7 @@ async def orchestrate(
             }
 
         proj = ProjectData(archive_path)
-        project_id = str(uuid.uuid4())[:8]
+        project_id = str(uuid.uuid4())
         _store_project(project_id, proj)
 
         has_geodata = getattr(proj, 'has_qgis', False)

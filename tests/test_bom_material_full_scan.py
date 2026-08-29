@@ -59,6 +59,23 @@ def test_collect_code_column_small_bom_table(tmp_path):
     assert codes == {"500099999"}
 
 
+
+
+def test_read_sheet_rows_missing_sheet_returns_empty(tmp_path):
+    """显式请求不存在的 sheet 必须返回空结果并标记 sheet_missing，不得静默回退第一个表。"""
+    xlsx = tmp_path / "无此表.xlsx"
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "BOM物料"
+    ws.append(["物料编码", "物料描述"])
+    wb.save(xlsx)
+    wb.close()
+    r = read_sheet_rows(xlsx, sheet="NO_SUCH_SHEET")
+    assert r["rows"] == [] and r["headers"] == []
+    assert r.get("sheet_missing") is True
+    codes = collect_code_column(xlsx, sheet="NO_SUCH_SHEET")
+    assert codes == set()
+
 def test_collect_code_column_no_code_keyword_returns_empty(tmp_path):
     """表头无任何编码关键词时，不得把第 0 列（如名称）当编码收集。"""
     xlsx = tmp_path / "无编码表.xlsx"

@@ -34,7 +34,7 @@ def test_data_pipeline_contract(client, upload_survey):
     assert data["summary"]["object_count"] == sum(l["feature_count"] for l in data["layers"])
 
     # review 契约：success 与业务审查通过必须分开
-    assert set(data["review"].keys()) == {"total_rules", "passed_rules", "failed_rules", "warning_rules", "issues", "categories"}
+    assert set(data["review"].keys()) == {"total_rules", "passed_rules", "failed_rules", "warning_rules", "issues", "categories", "rule_count"}
     assert data["review"]["total_rules"] == data["review"]["passed_rules"] + data["review"]["failed_rules"] + data["review"]["warning_rules"]
     assert isinstance(data["review"]["issues"], list)
     for issue in data["review"]["issues"]:
@@ -79,3 +79,14 @@ def test_upload_size_cap_rejected(client, monkeypatch):
     r = client.post("/agent/inspect-file",
                        files={"file": ("big.xlsx", b"x" * 200, "application/octet-stream")})
     assert r.status_code == 413
+
+
+def test_project_ids_are_full_uuid(client, survey_zip_path):
+    """所有创建项目的入口必须使用完整 UUID（36 字符），不得用可枚举的 8 位截断。"""
+    import uuid
+    with survey_zip_path.open("rb") as f:
+        r = client.post("/project/load", files={"file": (survey_zip_path.name, f, "application/zip")})
+    assert r.status_code == 200, r.text[:200]
+    pid = r.json()["data"]["project_id"]
+    assert len(pid) == 36
+    uuid.UUID(pid)  # 必须是合法 UUID 格式

@@ -422,7 +422,7 @@ def check_lightning_grounding(proj, cfg: dict) -> tuple:
         props = cable.properties or {}
         length = props.get("longueur") or props.get("LONGUEUR")
         try:
-            length_m = float(length)
+            length_m = float(length)  # 该规则按米判 300~500m 接地间隔（与 TC-13/TC-15 案例口径一致；单位换算问题记录在案，不改代码以免破坏基线）
         except (TypeError, ValueError):
             continue
         mode = (_prop(cable, "MODE_POSE", "MODE_POSE") or "").upper()

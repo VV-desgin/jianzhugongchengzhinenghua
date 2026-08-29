@@ -287,7 +287,11 @@ def read_sheet_rows(path: Path, sheet: Optional[str] = None,
             from openpyxl import load_workbook
             wb = load_workbook(path, read_only=True, data_only=True)
             try:
-                ws = next((w for w in wb.worksheets if w.title == sheet), wb.worksheets[0])
+                ws = next((w for w in wb.worksheets if w.title == sheet), None)
+                if ws is None:
+                    return {"file": path.name, "kind": classify_table(path.name), "sheet": sheet,
+                            "headers": [], "rows": [], "total": 0, "page": page,
+                            "page_size": page_size, "sheet_missing": True}
                 sheet_name = ws.title
                 for row in ws.iter_rows(values_only=True):
                     if feed([_to_serializable(c) for c in row]):
@@ -297,7 +301,11 @@ def read_sheet_rows(path: Path, sheet: Optional[str] = None,
         else:
             import xlrd
             wb = xlrd.open_workbook(str(path))
-            sh = next((s for s in wb.sheets() if s.name == sheet), wb.sheets()[0])
+            sh = next((s for s in wb.sheets() if s.name == sheet), None)
+            if sh is None:
+                return {"file": path.name, "kind": classify_table(path.name), "sheet": sheet,
+                        "headers": [], "rows": [], "total": 0, "page": page,
+                        "page_size": page_size, "sheet_missing": True}
             sheet_name = sh.name
             for r_idx in range(sh.nrows):
                 cells = [_to_serializable(sh.cell_value(r_idx, c)) for c in range(sh.ncols)]
@@ -401,7 +409,9 @@ def collect_code_column(path: Path, sheet: Optional[str] = None,
             from openpyxl import load_workbook
             wb = load_workbook(path, read_only=True, data_only=True)
             try:
-                ws = wb.worksheets[0] if not sheet else next((w for w in wb.worksheets if w.title == sheet), wb.worksheets[0])
+                ws = wb.worksheets[0] if not sheet else next((w for w in wb.worksheets if w.title == sheet), None)
+                if ws is None:
+                    return set()
                 for row in ws.iter_rows(values_only=True):
                     if feed([_to_serializable(c) for c in row]):
                         break
@@ -410,7 +420,9 @@ def collect_code_column(path: Path, sheet: Optional[str] = None,
         else:
             import xlrd
             wb = xlrd.open_workbook(str(path))
-            sh = wb.sheets()[0] if not sheet else next((s for s in wb.sheets() if s.name == sheet), wb.sheets()[0])
+            sh = wb.sheets()[0] if not sheet else next((s for s in wb.sheets() if s.name == sheet), None)
+            if sh is None:
+                return set()
             for r_idx in range(sh.nrows):
                 cells = [_to_serializable(sh.cell_value(r_idx, c)) for c in range(sh.ncols)]
                 if feed(cells):
