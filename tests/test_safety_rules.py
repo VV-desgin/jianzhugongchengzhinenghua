@@ -6,7 +6,7 @@ from shapely.geometry import LineString
 
 from design_parser.feature import UnifiedFeature
 from design_parser.project_data import ProjectData
-from design_parser.safety_rules import _load_config, run_safety_checks
+from design_parser.safety_rules import _load_config, check_utility_clearances, run_safety_checks
 
 
 def _feat(layer, fid, geom, props, crs="EPSG:4326"):
@@ -143,3 +143,32 @@ def test_lightning_grounding_long_aerial():
                      {"CODE": "C-GND", "MODE_POSE": "AERIEN", "longueur": 1200, "GROUNDING": "OUI"})
     data2 = run_safety_checks(_proj({"CABLE": [grounded]}))
     assert not any(i["rule_id"] == "R-SAFE-012" for i in data2["issues"])
+
+
+def test_unmapped_util_type_skipped_not_crash():
+    """配置中存在但无规则映射的类型（如燃气管）→ 跳过并记录，不崩溃。"""
+    cfg = _load_config()
+    cfg["wall_cable_clearances_mm"]["燃气管"] = {"parallel_mm": 300, "crossing_mm": 100}
+    cable = _feat("CABLE", 0, LineString([(0, 0, 5.0), (2, 0, 5.0)]), {"CODE": "C-1"})
+    gas = _feat("燃气管", 0, LineString([(1, -1, 5.0), (1, 1, 5.0)]), {"CODE": "G-1"})
+    issues, skipped = check_utility_clearances(_proj({"CABLE": [cable], "燃气管": [gas]}), cfg)
+    assert not any("燃气管" in i["message"] for i in issues)
+    assert any("燃气管" in s for s in skipped)
+
+
+def test_note_key_in_clearances_no_crash():
+    """配置中的 note 说明键不参与净距检查，不崩溃。"""
+    cfg = _load_config()
+    cable = _feat("CABLE", 0, LineString([(0, 0, 5.0), (2, 0, 5.0)]), {"CODE": "C-1"})
+    issues, skipped = check_utility_clearances(_proj({"CABLE": [cable], "NOTE": []}), cfg)
+    assert isinstance(issues, list)
+
+
+def test_compressed_air_layer_skipped_with_reason():
+    """压缩空气管图层：国标表7.6.3 无档位 → R-SAFE-006 不适用并显式记跳过。"""
+    cfg = _load_config()
+    cable = _feat("CABLE", 0, LineString([(0, 0, 5.0), (2, 0, 5.0)]), {"CODE": "C-1"})
+    air = _feat("压缩空气管", 0, LineString([(1, -1, 5.0), (1, 1, 5.0)]), {"CODE": "A-1"})
+    issues, skipped = check_utility_clearances(_proj({"CABLE": [cable], "压缩空气管": [air]}), cfg)
+    assert not any(i["rule_id"] == "R-SAFE-006" for i in issues)
+    assert any("压缩空气管" in s for s in skipped)

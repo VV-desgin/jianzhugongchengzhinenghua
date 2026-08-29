@@ -228,6 +228,13 @@ def check_utility_clearances(proj, cfg: dict) -> tuple:
         "避雷线接地引线": "R-SAFE-008",
         "工作保护地线": "R-SAFE-009",
     }
+    # 压缩空气管：GB 51158-2015 表7.6.3 无该档位（R-SAFE-006 不适用），遇到图层时显式记跳过
+    has_air_layer = any(
+        any(k.upper() in key.upper() for k in keywords.get("压缩空气管", ["压缩空气"]))
+        for key in proj.layers
+    )
+    if has_air_layer and "压缩空气管" not in clearances:
+        skipped.append("压缩空气管：GB 51158-2015 表7.6.3 无该档位（R-SAFE-006 不适用），跳过")
     for util_type, spec in clearances.items():
         kws = keywords.get(util_type, [util_type])
         feats = []
@@ -237,7 +244,12 @@ def check_utility_clearances(proj, cfg: dict) -> tuple:
                 feats.extend(fs)
         if not feats:
             continue
-        rule = rule_ids[util_type]
+        if not isinstance(spec, dict) or "parallel_mm" not in spec or "crossing_mm" not in spec:
+            continue
+        rule = rule_ids.get(util_type)
+        if rule is None:
+            skipped.append(f"{util_type}：配置存在但无对应规则映射，跳过（待核对归属）")
+            continue
         parallel_m = spec["parallel_mm"] / 1000.0
         crossing_m = spec["crossing_mm"] / 1000.0
         for cable in cables:
