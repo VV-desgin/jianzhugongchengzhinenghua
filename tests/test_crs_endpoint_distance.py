@@ -2,7 +2,8 @@
 """投影坐标系（EPSG:32629）下端点距离类规则回归：R010/R023/R024/R006_6。
 
 背景：旧实现硬编码 WGS84 测地线，把米制坐标当经纬度，pyproj 对纬度 >90 抛错或返回 NaN，
-投影数据下「端点完全重合」被误报（或 R023 漏报）。修复后按 feature 的 original_crs 计算距离。
+投影数据下「端点完全重合」被误报（或 R023 漏报）。修复后按 feature 的 original_crs 计算距离；
+CRS 未知（crs=None）时按经纬度（WGS84 默认）走测地线，避免把度当米。
 """
 from types import SimpleNamespace
 
@@ -114,4 +115,25 @@ def test_r006_6_exact_endpoints_projected_crs_no_false_positive():
         hits = [r for r in check_cable_endpoint_on_boite(ctx) if not r.passed]
     except Exception as e:
         pytest.fail(f"R006_6 在投影坐标系下崩溃: {e}")
+    assert hits == []
+
+
+def test_r023_geographic_without_crs_still_flags():
+    """CRS 未知（crs=None）时按经纬度走测地线：相距数十公里的光缆端点必须检出孤立。"""
+    c1 = _feat("CABLE", 0, LineString([(-8.50, 33.20), (-8.49, 33.21)]), {"CODE": "C-1"}, crs=None)
+    c2 = _feat("CABLE", 1, LineString([(-8.00, 33.50), (-7.99, 33.51)]), {"CODE": "C-2"}, crs=None)
+    ctx = SimpleNamespace(layers={"CABLE": [c1, c2]}, boxes=[], cables=[], device_code_index={}, crs=None)
+    hits = [r for r in check_cable_breakpoints(ctx) if not r.passed]
+    assert len(hits) >= 4
+
+
+def test_r010_exact_endpoints_without_crs_no_false_positive():
+    """CRS 未知时端点与设备点完全重合（经纬度坐标）不得误报。"""
+    box_a = Box(id="1", code="PBO-A", geometry=Point(-8.5, 33.2), properties={})
+    box_b = Box(id="2", code="PBO-B", geometry=Point(-8.49, 33.21), properties={})
+    cable = Cable(id="1", code="C-1",
+                  geometry=LineString([(-8.5, 33.2), (-8.49, 33.21)]),
+                  start_device="PBO-A", end_device="PBO-B", properties={})
+    ctx = SimpleNamespace(boxes=[box_a, box_b], cables=[cable], layers={}, device_code_index={}, crs=None)
+    hits = [r for r in check_cable_endpoint_on_device(ctx) if not r.passed]
     assert hits == []

@@ -112,6 +112,17 @@ def test_global_items_have_explicit_process_mapping():
         assert item["使用位置"] != "待确认", code
 
 
+
+
+def test_pole_type_without_height_nonstandard_marked_unlisted():
+    """无高度字段但类型声明 12m 的电杆不得静默按 7m 出料。"""
+    eng = _eng({"cable": [], "boite": [], "site": [], "infrastructure": [],
+                "ptech": [{"code": "P3", "type": "12m"}]})
+    result = build_bom(eng)
+    unlisted = [it for it in result["bom_items"] if it["物料编码"] == "未收录"]
+    assert any("12" in it["计算依据"] for it in unlisted)
+
+
 def test_cable_bend_growth_uses_business_params():
     """弯曲增长率必须读取 business_params（duct=7‰ 时比 10‰ 少 0.3KM/100KM）。"""
     eng = _eng({"cable": [{"code": "C1", "longueur": 100.0, "capacite": 24,

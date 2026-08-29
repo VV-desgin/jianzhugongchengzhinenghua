@@ -7,6 +7,7 @@
 from typing import Dict, List
 
 from .business_params import load_business_params
+import re
 from .bom_formula import compute_bom_quantity
 
 
@@ -142,6 +143,9 @@ def _pole_material(ptech: dict) -> str:
         return MAT_POLE_7M_3IN
     if "2.5" in t or "2.5 inch" in t.lower():
         return MAT_POLE_7M_25IN
+    m = re.search(r"(\d+(?:\.\d+)?)", t)
+    if m and float(m.group(1)) >= 10:
+        return None  # 类型明确声明 ≥10m 的非官方杆高（如 12m）→ 未收录待人工确认
     return MAT_POLE_7M_4IN
 
 

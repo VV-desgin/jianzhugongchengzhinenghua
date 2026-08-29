@@ -39,6 +39,8 @@ def reproject_coords(coords, src_crs: Optional[str], dst_crs: Optional[str]):
 
 def _is_geographic_crs(crs: Optional[str]) -> bool:
     """判断 CRS 是否为经纬度坐标系；None 时按旧行为（默认经纬度）处理。"""
+    if not crs:
+        return True  # CRS 未知时按经纬度（WGS84 默认）走测地线，避免把度当米
     if crs:
         try:
             from pyproj import CRS

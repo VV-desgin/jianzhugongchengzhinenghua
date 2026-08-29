@@ -1074,24 +1074,32 @@ class ProjectData:
                 r.severity = SEVERITY_MAP.get(r.rule_id, "warning")
         # 与 /agent/data-pipeline 对齐：并入 R-GIS 与 R-SAFE 模块结果（空间/安全规则）
         if getattr(self, "layers", None):
-            try:
-                from .gis_rules import run_gis_checks
-                from .safety_rules import run_safety_checks
-                _sev_map = {"致命": "fatal", "高": "error", "中": "warning"}
-                for mod_issues in (run_gis_checks(self)["issues"], run_safety_checks(self)["issues"]):
-                    for iss in mod_issues:
-                        results.append(CheckResult(
-                            check_object=str(iss.get("object_type") or ""),
-                            passed=False,
-                            problem_location=str(iss.get("object_id") or ""),
-                            actual_value="",
-                            expected_value="",
-                            rule_id=str(iss.get("rule_id") or ""),
-                            error_description=str(iss.get("message") or ""),
-                            severity=_sev_map.get(str(iss.get("severity") or ""), "warning"),
-                        ))
-            except Exception:
-                pass
+            from .gis_rules import run_gis_checks
+            from .safety_rules import run_safety_checks
+            _sev_map = {"致命": "fatal", "高": "error", "中": "warning"}
+            for mod_name, mod_issues_fn in (("R-GIS", lambda: run_gis_checks(self)["issues"]),
+                                            ("R-SAFE", lambda: run_safety_checks(self)["issues"])):
+                try:
+                    mod_issues = mod_issues_fn()
+                except Exception as e:
+                    logger.exception(f"{mod_name} 模块执行异常: {e}")
+                    results.append(CheckResult(
+                        check_object=f"{mod_name} 模块", passed=False,
+                        problem_location="规则执行异常", actual_value=str(e),
+                        expected_value="正常执行", rule_id=mod_name,
+                        error_description=f"{mod_name} 模块执行出错: {e}", severity="error"))
+                    continue
+                for iss in mod_issues:
+                    results.append(CheckResult(
+                        check_object=str(iss.get("object_type") or ""),
+                        passed=False,
+                        problem_location=str(iss.get("object_id") or ""),
+                        actual_value="",
+                        expected_value="",
+                        rule_id=str(iss.get("rule_id") or ""),
+                        error_description=str(iss.get("message") or ""),
+                        severity=_sev_map.get(str(iss.get("severity") or ""), "warning"),
+                    ))
         return results
 
     def get_rule_library(self) -> dict:
