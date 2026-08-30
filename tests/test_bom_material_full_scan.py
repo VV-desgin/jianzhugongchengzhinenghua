@@ -163,3 +163,38 @@ def test_r_bom_001_accepts_standard_box_type(tmp_path):
     )
     issues = rule_engine.check_bom_material_match(ctx)
     assert not [i for i in issues if i.rule_id == "R-BOM-001"]
+
+
+def test_collect_code_column_skips_blank_rows(tmp_path):
+    """百万空行压力表：全空行不得污染表头/编码收集，坏码仍被检出。"""
+    xlsx = tmp_path / "BOM_LIST_blank_rows.xlsx"
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Sheet1"
+    ws.append(["物料编码", "物料描述"])
+    ws.append(["500003800", "安全防护"])
+    for _ in range(5000):
+        ws.append([None, None])
+    ws.append(["500099999", "深埋异常码"])
+    wb.save(xlsx)
+    wb.close()
+    codes = collect_code_column(xlsx, sheet="Sheet1")
+    assert codes == {"500003800", "500099999"}
+
+
+def test_read_sheet_rows_skips_blank_rows(tmp_path):
+    """read_sheet_rows 跳过全空行：total/rows 只统计真实数据行。"""
+    xlsx = tmp_path / "rows_blank.xlsx"
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Sheet1"
+    ws.append(["物料编码", "物料描述"])
+    ws.append(["500003800", "安全防护"])
+    ws.append(["500003890", "运输"])
+    for _ in range(2000):
+        ws.append([None, None])
+    wb.save(xlsx)
+    wb.close()
+    r = read_sheet_rows(xlsx, sheet="Sheet1")
+    assert r["total"] == 2
+    assert [row[0] for row in r["rows"]] == ["500003800", "500003890"]

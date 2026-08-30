@@ -263,6 +263,8 @@ def read_sheet_rows(path: Path, sheet: Optional[str] = None,
         def feed(row: list) -> bool:
             """处理一行：返回 True 表示可以提前结束。"""
             nonlocal header_idx, scan_done, total
+            if not any(v is not None and str(v).strip() for v in row):
+                return False  # 全空行：跳过，不计入数据行（百万空行压力表不浪费 CPU）
             if not scan_done:
                 header_rows.append(row)
                 if len(header_rows) >= HEADER_SCAN_ROWS:
@@ -387,6 +389,8 @@ def collect_code_column(path: Path, sheet: Optional[str] = None,
         def feed(row: list) -> bool:
             """处理一行，返回 True 表示已收集够可以提前结束。"""
             nonlocal header_idx, scan_done, col
+            if not any(v is not None and str(v).strip() for v in row):
+                return False  # 全空行：跳过（百万空行压力表不浪费 CPU）
             if not scan_done:
                 header_rows.append(row)
                 if len(header_rows) >= HEADER_SCAN_ROWS:
