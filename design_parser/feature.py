@@ -1,13 +1,13 @@
 from shapely.geometry import Point, LineString, Polygon
 from typing import Any, Dict, Optional
 from enum import Enum
-#定义统一特征对象 UnifiedFeature，包含几何、属性、来源等。
 class GeomType(str, Enum):
     POINT = "point"
     LINE = "line"
     POLYGON = "polygon"
 
 class UnifiedFeature:
+    """统一特征对象：几何 + 属性 + 来源图层。"""
     def __init__(self, source_layer_name: str, feature_id: int,
                  geometry: Any, properties: Dict[str, Any],
                  original_crs: Optional[str] = None):

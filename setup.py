@@ -48,7 +48,6 @@ setup(
     packages=find_packages(include=["design_parser", "design_parser.*"]),
     # 顶层模块（api.py, schemas.py）
     py_modules=["api", "schemas"],
-    # 包数据文件
     package_data={
         "design_parser": ["mappings/*.yaml"],
     },

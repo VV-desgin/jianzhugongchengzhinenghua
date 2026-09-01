@@ -701,7 +701,6 @@ class ProjectData:
     def _normalize_field_names(features: List[UnifiedFeature]):
         """将 SHP 截断字段名（10字符限制）自动补全为官方完整字段名"""
         truncated_fields = {
-            # BOITE
             'CODE_POSTA': 'CODE_POSTAL',
             'NB_LOGEMEN': 'NB_LOGEMENT',
             'NB_FIBRE_U': 'NB_FIBRE_UTIL',
@@ -712,7 +711,6 @@ class ProjectData:
             'GESTIONNAI': 'GESTIONNAIRE',
             'REF_PRODUI': 'REF_PRODUIT',
             'NB_FIBRE_': 'NB_FIBRE_UTIL',
-            # IMB
             'NUMERO_VOI': 'NUMERO_VOIE',
             'COMPLEME_1': 'COMPLEMENT_VOIE',
             'NOM_BATIME': 'NOM_BATIMENT',
@@ -723,18 +721,14 @@ class ProjectData:
             'COL_MONTAN': 'COL_MONTANTE',
             'SOUS_SOL_C': 'SOUS_SOL_COMMUN',
             'BPE_CODE': 'BPE_CODE',
-            # PTECH
             'HAUTEUR_AP': 'HAUTEUR_APPUI',
             'TYPE_APPUI': 'TYPE_APPUI',
             'EFFORT_APP': 'EFFORT_APPUI',
             'NB_BOITIER': 'NB_BOITIERS',
-            # SITE
             'REF_PRODUI': 'REF_PRODUIT',
-            # CABLE
             'CODE_INFRA': 'CODE_INFRA',
             'TYPE_CABLE': 'TYPE_CABLE',
             'MODE_POSE': 'MODE_POSE',
-            # COMMON
             'CODE_PT': 'CODE_PTC',
         }
         for feat in features:

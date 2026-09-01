@@ -237,7 +237,7 @@ def build_bom(engineering_data: dict, params: dict = None) -> dict:
     if reused_cables:
         cable_note += f"；利旧冲减{len(reused_cables)}条光缆（{reused_km:.2f}KM），新购按{len(new_cables)}条计"
     if total_cable_km > 0 or zero_len or reused_cables:
-        # 弯曲增长按 YD/T 5102-2024 表4：默认管道 10‰（可扩展按敷设方式细分）
+        # 弯曲增长读 business_params.reserve_lengths.bend_growth_permille（默认 duct 10‰，2026-08-30 改配置驱动）
         counts = {"splice": n_splice, "pole": len(ptechs), "endpoint": len(boites) + 1,
                   "bend_permille": params.get("reserve_lengths", {}).get("bend_growth_permille", {}).get("duct", 10)}
         add(MAT_CABLE, total_cable_km, counts, f"{len(cables)}条光缆", cable_note, confirm=cable_confirm)
@@ -302,7 +302,6 @@ def build_bom(engineering_data: dict, params: dict = None) -> dict:
         add(MAT_SPLICING, n_pcp * splice_cores, {}, f"{n_pcp}个PCP",
             f"每PCP熔接{splice_cores}芯（D05 定稿：前4芯接SP）", confirm="待人工确认")
 
-    # 标签
     if len(cables) > 0:
         add(MAT_CABLE_LABEL, len(cables), {}, f"{len(cables)}条光缆", "每条光缆1张")
     if n_fdt > 0:
