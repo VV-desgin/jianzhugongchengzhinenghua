@@ -338,3 +338,8 @@
 - 决策：修复方式以已部署后端字段为基础（review.status/stage_results、quantity/unit/source_object_ids）；施工 BOM 聚合归属建议先采用“汇总材料+归属对象清单”方案 B。
 - 结果：Dify 修复文档就绪；后续按负责人选择逐项实施（建议先总控 Gate，再施工工具，再纤芯决策）。
 
+### 19:00 主脑-上传GitHub
+- 操作：暂存今日代码改动与Dify修复文档（33文件），提交455243f并推送 origin/codex/business-params 成功（未改main）；原始25包JSON未上传，仅保留本地。
+- 决策：上传采用独立功能分支，避免直接改main；是否合并/PR由负责人决定。
+- 结果：今日代码与修复文档已上传GitHub。
+
