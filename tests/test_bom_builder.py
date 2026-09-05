@@ -227,3 +227,27 @@ def test_bom_cable_reuse_deduction_partial():
     assert cable["设计数量"] == pytest.approx(5.0)
     assert "利旧冲减1条光缆（14.14KM）" in cable["计算方式"]
     assert cable["置信状态"] == "待人工确认"
+
+
+def test_bom_items_canonical_keys_and_object_ids():
+    """CON-03/CON-04 后端侧：BOM 行必须带 quantity/unit/material_code/source_object_ids 规范键，且与中文字段一致。"""
+    eng = _eng({
+        "cable": [], "ptech": [], "site": [], "infrastructure": [],
+        "boite": [
+            {"code": "B1", "type": "16口", "capacite": 16, "id": "boite:B1"},
+            {"code": "B2", "type": "FDT", "capacite": 72, "id": "boite:B2"},
+        ],
+    })
+    result = build_bom(eng)
+    assert result["bom_items"]
+    for it in result["bom_items"]:
+        assert it["quantity"] == it["最终数量"]
+        assert it["unit"] == it["单位"]
+        assert it["material_code"] == it["物料编码"]
+        assert isinstance(it["source_object_ids"], list)
+    box16 = next(it for it in result["bom_items"] if it["物料编码"] == "500002142")
+    fdt = next(it for it in result["bom_items"] if it["物料编码"] == "500002054")
+    assert box16["source_object_ids"] == ["boite:B1"]
+    assert fdt["source_object_ids"] == ["boite:B2"]
+    fixed = next(it for it in result["bom_items"] if it["物料编码"] == "500001887")
+    assert fixed["source_object_ids"] == []

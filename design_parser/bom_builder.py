@@ -21,6 +21,18 @@ def _is_known_box_type(t: str) -> bool:
     return False
 
 
+def _source_ids(items, kind: str) -> list:
+    """生成规范 source_object_ids：优先真实 id，缺失时用 {kind}:{code} 稳定回退。"""
+    out = []
+    for item in items or []:
+        if not isinstance(item, dict):
+            continue
+        code = item.get("code") or item.get("id") or ""
+        if code:
+            out.append(str(item.get("id") or f"{kind}:{code}"))
+    return out
+
+
 # 官方映射表核心物料（设计对象-物料-工序映射表）
 MAT_SAFETY = "500003800"        # 安全防护与准备（全局 1/项目）
 MAT_MOBILIZE = "500003890"      # 运输、进场与退场（全局 1/项目）
@@ -180,7 +192,8 @@ def build_bom(engineering_data: dict, params: dict = None) -> dict:
     rule_seq = 0
 
     def add(material_code: str, design_qty: float, counts: dict, ref: str,
-            calc_note: str, unit: str = None, confirm: str = "自动匹配"):
+            calc_note: str, unit: str = None, confirm: str = "自动匹配",
+            ids: list = None):
         nonlocal rule_seq
         rule_seq += 1
         name, default_unit = _MATERIAL_NAMES.get(material_code, (material_code, "PC"))
@@ -196,7 +209,7 @@ def build_bom(engineering_data: dict, params: dict = None) -> dict:
             final_qty = float(design_qty)
             detail = f"{calc_note}；按件/按点计量，不取整" if calc_note else "按件/按点计量，不取整"
         process, location = _MATERIAL_PROCESS.get(material_code, ("待确认", "待确认"))
-        items.append({
+        row = {
             "规则编号": f"BOM-B{rule_seq:02d}",
             "对应工序": process,
             "使用位置": location,
@@ -213,7 +226,25 @@ def build_bom(engineering_data: dict, params: dict = None) -> dict:
             "计算依据": detail,
             "置信状态": confirm,
             "数据来源": f"{calc_note}｜{source}",
-        })
+        }
+        row["rule_code"] = row["规则编号"]
+        row["process"] = row["对应工序"]
+        row["location"] = row["使用位置"]
+        row["material_code"] = row["物料编码"]
+        row["material_name"] = row["物料名称"]
+        row["specification"] = row["规格型号"]
+        row["unit"] = row["单位"]
+        row["design_quantity"] = row["设计数量"]
+        row["loss_quantity"] = row["损耗数量"]
+        row["reserve_quantity"] = row["预留数量"]
+        row["quantity"] = row["最终数量"]
+        row["design_object"] = row["对应设计对象"]
+        row["calculation_method"] = row["计算方式"]
+        row["calculation_basis"] = row["计算依据"]
+        row["confidence_status"] = row["置信状态"]
+        row["data_source"] = row["数据来源"]
+        row["source_object_ids"] = list(ids or [])
+        items.append(row)
 
     # 全局工程固定项（每项目 1 次）
     add(MAT_SAFETY, 1.0, {}, "项目整体", "每项目1次")
@@ -240,23 +271,28 @@ def build_bom(engineering_data: dict, params: dict = None) -> dict:
         # 弯曲增长读 business_params.reserve_lengths.bend_growth_permille（默认 duct 10‰，2026-08-30 改配置驱动）
         counts = {"splice": n_splice, "pole": len(ptechs), "endpoint": len(boites) + 1,
                   "bend_permille": params.get("reserve_lengths", {}).get("bend_growth_permille", {}).get("duct", 10)}
-        add(MAT_CABLE, total_cable_km, counts, f"{len(cables)}条光缆", cable_note, confirm=cable_confirm)
+        add(MAT_CABLE, total_cable_km, counts, f"{len(cables)}条光缆", cable_note, confirm=cable_confirm,
+            ids=_source_ids(cables, "cable"))
     if total_cable_km > 0 or zero_len or reused_cables:
         # 钢绞线：架空光缆配套，按光缆长度（M），500m/卷取整
         add(MAT_STEEL_WIRE, total_cable_km * 1000.0, {}, f"{len(cables)}条光缆",
-            cable_note, unit="M", confirm=cable_confirm)
+            cable_note, unit="M", confirm=cable_confirm, ids=_source_ids(cables, "cable"))
 
     # 电杆：按高度/类型映射，利旧冲减（reuse=yes 不新建）
     pole_groups: Dict[str, int] = {}
     pole_reused: Dict[str, int] = {}
     unknown_pole_types: Dict[str, int] = {}
+    pole_ids: Dict[str, list] = {}
+    unknown_pole_ids: Dict[str, list] = {}
     for pt in ptechs:
         m = _pole_material(pt)
         if m is None:
             t = _obj_field(pt, "type", "TYPE") or "UNKNOWN"
             unknown_pole_types[t] = unknown_pole_types.get(t, 0) + 1
+            unknown_pole_ids.setdefault(t, []).append(pt)
             continue
         pole_groups[m] = pole_groups.get(m, 0) + 1
+        pole_ids.setdefault(m, []).append(pt)
         if _is_reuse(pt, params):
             pole_reused[m] = pole_reused.get(m, 0) + 1
     for m, total in pole_groups.items():
@@ -264,23 +300,28 @@ def build_bom(engineering_data: dict, params: dict = None) -> dict:
         new_qty = max(0, total - reused)
         note = f"设计{total}根" + (f"，利旧冲减{reused}根" if reused else "")
         confirm = "自动匹配" if reused == 0 else "待人工确认"
-        add(m, new_qty, {}, f"{total}根电杆", note, confirm=confirm)
+        add(m, new_qty, {}, f"{total}根电杆", note, confirm=confirm,
+            ids=_source_ids(pole_ids.get(m, []), "ptech"))
     for t, n in unknown_pole_types.items():
         add("未收录", float(n), {}, f"{n}根非标电杆",
             f"非标/未收录电杆类型 '{t}'（高度不在官方 7m/9m 杆型）不在官方物料库，数量待人工确认",
-            confirm="待人工确认")
+            confirm="待人工确认", ids=_source_ids(unknown_pole_ids.get(t, []), "ptech"))
 
     # 箱体：按容量映射 FDT/16口，利旧冲减
     box_groups: Dict[str, int] = {}
     box_reused: Dict[str, int] = {}
     unknown_box_types: Dict[str, int] = {}
+    box_ids: Dict[str, list] = {}
+    unknown_box_ids: Dict[str, list] = {}
     for b in boites:
         m = _box_material(b)
         if m is None:
             t = (b.get("type") or "").strip() or "UNKNOWN"
             unknown_box_types[t] = unknown_box_types.get(t, 0) + 1
+            unknown_box_ids.setdefault(t, []).append(b)
             continue
         box_groups[m] = box_groups.get(m, 0) + 1
+        box_ids.setdefault(m, []).append(b)
         if _is_reuse(b, params):
             box_reused[m] = box_reused.get(m, 0) + 1
     for m, total in box_groups.items():
@@ -288,43 +329,50 @@ def build_bom(engineering_data: dict, params: dict = None) -> dict:
         new_qty = max(0, total - reused)
         note = f"设计{total}个" + (f"，利旧冲减{reused}个" if reused else "")
         confirm = "自动匹配" if reused == 0 else "待人工确认"
-        add(m, new_qty, {}, f"{total}个箱体", note, confirm=confirm)
+        add(m, new_qty, {}, f"{total}个箱体", note, confirm=confirm,
+            ids=_source_ids(box_ids.get(m, []), "boite"))
     for t, n in unknown_box_types.items():
         add("未收录", float(n), {}, f"{n}个非标箱体",
-            f"非标/未收录箱体类型 '{t}' 不在官方物料库，数量待人工确认", confirm="待人工确认")
+            f"非标/未收录箱体类型 '{t}' 不在官方物料库，数量待人工确认", confirm="待人工确认",
+            ids=_source_ids(unknown_box_ids.get(t, []), "boite"))
 
     # 熔接：按接续点数（D05 定稿：前 4 芯接 SP、直通计熔接、停放不计数）
     n_fdt = box_groups.get(MAT_FDT_72, 0)
     n_box = box_groups.get(MAT_BOX_16, 0)
     n_pcp = n_fdt + n_box
     splice_cores = params.get("fiber_policy", {}).get("splice_cores_per_pcp", 4)
+    cable_ids = _source_ids(cables, "cable")
+    fdt_ids = _source_ids(box_ids.get(MAT_FDT_72, []), "boite")
+    box16_ids = _source_ids(box_ids.get(MAT_BOX_16, []), "boite")
+    pcp_ids = fdt_ids + box16_ids
+    ptech_ids = _source_ids(ptechs, "ptech")
     if n_pcp > 0:
         add(MAT_SPLICING, n_pcp * splice_cores, {}, f"{n_pcp}个PCP",
-            f"每PCP熔接{splice_cores}芯（D05 定稿：前4芯接SP）", confirm="待人工确认")
+            f"每PCP熔接{splice_cores}芯（D05 定稿：前4芯接SP）", confirm="待人工确认", ids=pcp_ids)
 
     if len(cables) > 0:
-        add(MAT_CABLE_LABEL, len(cables), {}, f"{len(cables)}条光缆", "每条光缆1张")
+        add(MAT_CABLE_LABEL, len(cables), {}, f"{len(cables)}条光缆", "每条光缆1张", ids=cable_ids)
     if n_fdt > 0:
-        add(MAT_FDT_LABEL, n_fdt, {}, f"{n_fdt}个FDT", "每个FDT1张")
+        add(MAT_FDT_LABEL, n_fdt, {}, f"{n_fdt}个FDT", "每个FDT1张", ids=fdt_ids)
     if n_box > 0:
-        add(MAT_FAT_LABEL, n_box, {}, f"{n_box}个光箱", "每个光箱1张")
+        add(MAT_FAT_LABEL, n_box, {}, f"{n_box}个光箱", "每个光箱1张", ids=box16_ids)
     if ptechs:
-        add(MAT_POLE_LABEL, len(ptechs), {}, f"{len(ptechs)}根电杆", "每杆1张")
+        add(MAT_POLE_LABEL, len(ptechs), {}, f"{len(ptechs)}根电杆", "每杆1张", ids=ptech_ids)
 
     # 吊架/挂钩：架空光缆配套（数量口径按现状定稿，标记待人工确认）
     if total_cable_km > 0:
         add(MAT_HANGER, len(cables), {}, f"{len(cables)}条光缆",
-            "吊架数量按现状定稿", confirm="待人工确认")
+            "吊架数量按现状定稿", confirm="待人工确认", ids=cable_ids)
 
     # 测试：按光箱/接头点数（每 PCP 1 点，按现状定稿）
     if n_pcp > 0:
         add(MAT_TEST, n_pcp, {}, f"{n_pcp}个PCP",
-            "按光箱/接头点数（按现状定稿）", confirm="待人工确认")
+            "按光箱/接头点数（按现状定稿）", confirm="待人工确认", ids=pcp_ids)
 
     # 施工许可：按架空光缆长度（M，按现状定稿）
     if total_cable_km > 0:
         add(MAT_PERMIT, total_cable_km * 1000.0, {}, "架空光缆",
-            "按长度计量（按现状定稿）", unit="M", confirm="待人工确认")
+            "按长度计量（按现状定稿）", unit="M", confirm="待人工确认", ids=cable_ids)
 
     confirm_count = sum(1 for it in items if it["置信状态"] != "自动匹配")
     return {

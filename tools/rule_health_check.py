@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """规则健康检查（上线门禁）：
-1. 来源完整性：68 条规则在 09 追溯表均有 Source ID 与 Evidence；
+1. 来源完整性：有效规则（已注册且已路由/挂载，当前 66 条）在 09 追溯表均有 Source ID 与 Evidence；
 2. 路由覆盖：ALL_RULES 中未路由清单（R007_1/R007_2 为有意保留，白名单）；
 3. 配置-规则映射一致性：safety_distances.json 与 safety_rules.py rule_ids 互查；
 4. 文档完整性：docs/16 规则总表无空描述。
@@ -47,9 +47,15 @@ def main():
                     for k, v in zip(node.value.keys, node.value.values):
                         routing[k.value] = [e.value for e in v.elts]
     routed = set().union(*routing.values()) if routing else set()
-    unrouted = sorted(engine_rules - routed)
-    for rid in unrouted:
-        (infos if rid in INTENTIONAL_UNROUTED else warns).append(f"未路由：{rid}")
+    effective = sorted(engine_rules - INTENTIONAL_UNROUTED)
+    unexpected_unrouted = sorted(engine_rules - routed - INTENTIONAL_UNROUTED)
+    for rid in unexpected_unrouted:
+        warns.append(f"未路由且不在白名单：{rid}")
+    infos.append(f"有效规则数：{len(effective)}（仅展示有效规则；历史未路由 {len(engine_rules - routed)} 条不计入）")
+    gis_module_ids = {f"R-GIS-{i:03d}" for i in range(1, 7)}
+    safety_module_ids = {f"R-SAFE-{i:03d}" for i in range(1, 13)}
+    effective_all = sorted(set(effective) | gis_module_ids | safety_module_ids)
+    infos.append(f"有效规则总数（含 GIS/SAFE 模块）：{len(effective_all)}")
 
     # 09 追溯完整性
     wb = openpyxl.load_workbook(DOC09, data_only=True)
@@ -59,7 +65,7 @@ def main():
         rid = row[0].value
         if rid:
             traced[rid] = (row[3].value, row[9].value)
-    missing = sorted(engine_rules - set(traced))
+    missing = sorted(set(effective_all) - set(traced))
     for rid in missing:
         fails.append(f"09 追溯缺失：{rid}")
     for rid, (src, ev) in traced.items():
@@ -67,7 +73,8 @@ def main():
             fails.append(f"09 无 Source ID：{rid}")
         if not ev or str(ev).strip() in ("", "—", "-"):
             fails.append(f"09 无 Evidence：{rid}")
-    infos.append(f"09 追溯行数：{len(traced)}（应 68）")
+    extra_traced = sorted(set(traced) - set(effective_all))
+    infos.append(f"09 追溯行数：{len(traced)}（有效规则要求 ≥{len(effective_all)}，当前含历史/额外 {len(extra_traced)} 条）")
 
     # 16 表空描述
     t16 = DOC16.read_text(encoding="utf-8")

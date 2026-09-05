@@ -4,7 +4,7 @@ REQUIRED_TOP_KEYS = [
     "success", "project_id", "project_name", "project_type",
     "request_id",
     "layers", "summary", "review", "warnings", "errors",
-    "engineering_data",
+    "engineering_data", "stage_results",
 ]
 
 REQUIRED_LAYER_KEYS = ["name", "exists", "feature_count", "geometry_type", "source_layer_name"]
@@ -34,7 +34,7 @@ def test_data_pipeline_contract(client, upload_survey):
     assert data["summary"]["object_count"] == sum(l["feature_count"] for l in data["layers"])
 
     # review 契约：success 与业务审查通过必须分开
-    assert set(data["review"].keys()) == {"total_rules", "passed_rules", "failed_rules", "warning_rules", "issues", "categories", "rule_count"}
+    assert set(data["review"].keys()) == {"total_rules", "passed_rules", "failed_rules", "warning_rules", "issues", "categories", "rule_count", "status", "executed", "reason", "error"}
     assert data["review"]["total_rules"] == data["review"]["passed_rules"] + data["review"]["failed_rules"] + data["review"]["warning_rules"]
     assert isinstance(data["review"]["issues"], list)
     for issue in data["review"]["issues"]:
@@ -90,3 +90,58 @@ def test_project_ids_are_full_uuid(client, survey_zip_path):
     pid = r.json()["data"]["project_id"]
     assert len(pid) == 36
     uuid.UUID(pid)  # 必须是合法 UUID 格式
+
+
+def test_data_pipeline_review_executed_stage_state(client, upload_survey):
+    """RUN-04 后端侧：审查成功执行时 review/stage_results 必须给出机器状态 executed。"""
+    data = upload_survey().json()
+    assert data["stage_results"]["parse"]["status"] == "success"
+    rs = data["stage_results"]["review"]
+    assert rs["status"] == "executed"
+    assert rs["executed"] is True
+    assert data["review"]["status"] == "executed"
+    assert data["review"]["executed"] is True
+    assert data["review"]["reason"] == ""
+    assert data["review"]["error"] == ""
+
+
+def test_data_pipeline_excel_review_skipped_stage_state(client, monkeypatch):
+    """RUN-04 后端侧：非可审查文件（附件文档）必须标 skipped，不得用全 0 计数伪装成功。"""
+    from pathlib import Path
+    import api as api_module
+
+    fake_info = {"can_be_parsed": True, "file_category": "附件文档", "warnings": [], "reason": ""}
+    monkeypatch.setattr(api_module, "inspect_file", lambda *a, **k: fake_info)
+    monkeypatch.setattr(api_module, "_pipeline_cache_get", lambda *a, **k: None)
+    monkeypatch.setattr(api_module, "_pipeline_cache_put", lambda *a, **k: None)
+    p = Path(__file__).resolve().parent / "data" / "standard_cases" / "正确工程案例.xlsx"
+    assert p.is_file(), p
+    with p.open("rb") as f:
+        r = client.post("/agent/data-pipeline", files={"file": (p.name, f, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")})
+
+    assert r.status_code == 200, r.text[:300]
+    data = r.json()
+    rs = data["stage_results"]["review"]
+    assert rs["status"] == "skipped"
+    assert rs["executed"] is False
+    assert rs["reason"]
+    assert data["review"]["status"] == "skipped"
+    assert data["review"]["executed"] is False
+
+
+def test_data_pipeline_gis_module_exception_marks_review_error(client, upload_survey, monkeypatch):
+    """RUN-04 后端侧：GIS 模块异常不得被 except:pass 吞掉，须显式 error 且 success=false。"""
+    import design_parser.gis_rules as gr
+    import api as api_module
+    monkeypatch.setattr(api_module, "_pipeline_cache_get", lambda *a, **k: None)
+    monkeypatch.setattr(api_module, "_pipeline_cache_put", lambda *a, **k: None)
+
+    def _boom(*args, **kwargs):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(gr, "run_gis_checks", _boom)
+    data = upload_survey().json()
+    assert data["review"]["status"] == "error"
+    assert data["stage_results"]["review"]["status"] == "error"
+    assert data["success"] is False
+    assert data["errors"]

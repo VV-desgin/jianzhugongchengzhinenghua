@@ -1499,7 +1499,10 @@ def data_pipeline(
         "project_name": "",
         "project_type": "unknown",
         "summary": {"layer_count": 0, "object_count": 0},
-        "review": {"total_rules": 0, "passed_rules": 0, "failed_rules": 0, "warning_rules": 0, "issues": []},
+        "review": {"total_rules": 0, "passed_rules": 0, "failed_rules": 0, "warning_rules": 0, "issues": [],
+                   "status": "not_run", "executed": False, "reason": "", "error": ""},
+        "stage_results": {"parse": {"status": "pending"},
+                          "review": {"status": "not_run", "executed": False, "reason": "", "error": ""}},
         "warnings": [],
         "errors": [],
         "status": "error",
@@ -1530,6 +1533,8 @@ def data_pipeline(
         if not file_info.get("can_be_parsed", False):
             result["status"] = "not_parseable"
             result["errors"].append(file_info.get("reason", "无法解析，请检查文件格式"))
+            result["stage_results"]["parse"]["status"] = "error"
+            result["stage_results"]["review"] = {"status": "not_run", "executed": False, "reason": "", "error": ""}
             return result
 
         try:
@@ -1588,6 +1593,8 @@ def data_pipeline(
             logger.exception(f"工程数据加载失败: {e}")
             result["status"] = "project_load_failed"
             result["errors"].append(f"工程数据加载失败: {e}")
+            result["stage_results"]["parse"]["status"] = "error"
+            result["stage_results"]["review"] = {"status": "not_run", "executed": False, "reason": "", "error": ""}
             return result
 
         reviewable_categories = set(RULE_ROUTING.keys())
@@ -1597,6 +1604,7 @@ def data_pipeline(
         if rule_ids and has_gis and file_info.get("file_category", "") in reviewable_categories:
             all_results = []
             try:
+                module_error = ""
                 for rid in rule_ids:
                     if rid not in ALL_RULES:
                         continue
@@ -1643,8 +1651,10 @@ def data_pipeline(
                                     error_description=str(iss.get("message") or ""),
                                     severity=_sev_map.get(str(iss.get("severity") or ""), "warning"),
                                 ))
-                    except Exception:
-                        pass
+                    except Exception as _e:
+                        module_error = str(_e)
+                        logger.warning(f"GIS/SAFE 模块执行异常: {_e}")
+                        result["errors"].append(f"GIS/SAFE 模块执行异常: {_e}")
 
                 # 严重等级按官方知识库v2.0 对齐（SEVERITY_MAP：致命/高/中 → fatal/error/warning）
                 _normalize_severities(all_results)
@@ -1707,9 +1717,17 @@ def data_pipeline(
                     "failed_rules": failed_rules,
                     "categories": categories,
                     "issues": issues,
+                    "status": "executed",
+                    "executed": True,
+                    "reason": "",
+                    "error": "",
                 }
 
                 total_cables = _count_cables(proj)
+                if module_error:
+                    result["review"].update({"status": "error", "executed": False,
+                                                  "reason": "GIS/SAFE 模块执行异常",
+                                                  "error": module_error})
                 serious_issues = _collect_serious_issues(all_results, total_cables)
                 result["serious_issues_detected"] = bool(serious_issues)
             except Exception as e:
@@ -1721,12 +1739,17 @@ def data_pipeline(
                     "error_description": f"规则审查执行异常: {e}"
                 }]
                 result["errors"].append(f"规则审查执行异常: {e}")
+                result["review"].update({"status": "error", "executed": False,
+                                              "reason": "规则审查执行异常",
+                                              "error": f"规则审查执行异常: {e}"})
         else:
             result["review_results"] = []
             result["review_message"] = (
                 "跳过审查（非可审查类别或无 GIS 图层数据）"
             )
             result["warnings"].append("跳过审查（非可审查类别或无 GIS 图层数据）")
+            result["review"].update({"status": "skipped", "executed": False,
+                                          "reason": "非可审查类别或无 GIS 图层数据", "error": ""})
         _rule_dist = {}
         for _iss in (result.get("review") or {}).get("issues") or []:
             _rule_dist[_iss["rule_id"]] = _rule_dist.get(_iss["rule_id"], 0) + 1
@@ -1770,8 +1793,19 @@ def data_pipeline(
             "object_count": object_count,
         }
 
-        result["status"] = "success"
-        result["success"] = True
+        review_status = (result.get("review") or {}).get("status")
+        if review_status == "error":
+            result["status"] = "review_error"
+            result["success"] = False
+        else:
+            result["status"] = "success"
+            result["success"] = True
+        _rv = result.get("review") or {}
+        result["stage_results"] = {
+            "parse": {"status": "error" if result.get("status") in ("not_parseable", "project_load_failed", "error", "review_error") else "success"},
+            "review": {"status": _rv.get("status", "not_run"), "executed": bool(_rv.get("executed")),
+                       "reason": str(_rv.get("reason") or ""), "error": str(_rv.get("error") or "")},
+        }
         if compact:
             result["excel_data"] = {}
             result["engineering_data"].pop("fiber_tables", None)
@@ -1789,6 +1823,7 @@ def data_pipeline(
         result["status"] = "error"
         result["success"] = False
         result["errors"].append(str(e))
+        result["stage_results"]["parse"]["status"] = "error"
     finally:
         Path(archive_path).unlink(missing_ok=True)
         # 保留解压文件供 project_id 后续接口（bom/fiber/table-data 等）取数；
