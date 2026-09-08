@@ -1,0 +1,313 @@
+"""后端标准 BOM 生成（bom_builder）与纤芯占用预置（fiber_assignments）测试。"""
+import json
+import os
+import sys
+from pathlib import Path
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from design_parser.bom_builder import build_bom
+from design_parser.business_params import load_business_params
+from design_parser.rule_engine import build_fiber_assignments
+
+
+class _FakeFeat:
+    def __init__(self, props):
+        self.properties = props
+
+
+class _FakeCtx:
+    def __init__(self, layers):
+        self.layers = layers
+
+
+def _eng(objects):
+    return {"project_id": "t", "objects": objects}
+
+
+def test_bom_cable_formula():
+    """光缆 5.253KM 按 2KM/盘向上取整 → 3盘6KM（损耗/预留/取整链路）。"""
+    eng = _eng({
+        "cable": [{"code": "C1", "longueur": 5.253, "capacite": 24, "modulo": 6,
+                   "origine": "A", "extremite": "B", "nb_fibre_util": 6}],
+        "boite": [], "ptech": [], "site": [], "infrastructure": [],
+    })
+    result = build_bom(eng)
+    cable = next(it for it in result["bom_items"] if it["物料编码"] == "500002050")
+    assert cable["设计数量"] == pytest.approx(5.253)
+    assert cable["损耗数量"] == pytest.approx(5.253 * 0.05)
+    assert cable["最终数量"] == 6.0  # ceil(5.565/2)=3 盘 → 6KM
+
+
+def test_bom_pole_reuse_deduction():
+    """电杆利旧冲减：设计 2 根、1 根 reuse=yes → 新建 1 根，已知利旧无需人工确认。"""
+    eng = _eng({
+        "cable": [], "boite": [],
+        "ptech": [
+            {"code": "P1", "type": "7m 4英寸", "hauteur_appui": 7},
+            {"code": "P2", "type": "7m 4英寸", "hauteur_appui": 7, "reuse": "yes"},
+        ],
+        "site": [], "infrastructure": [],
+    })
+    result = build_bom(eng)
+    pole = next(it for it in result["bom_items"] if it["物料编码"] == "500002480")
+    assert pole["设计数量"] == 1
+    assert pole["置信状态"] == "自动匹配"
+    assert "利旧冲减" in pole["计算依据"]
+
+
+def test_bom_box_mapping():
+    """箱体按容量映射：容量 72 → FDT(500002054)，16 → 16口光箱(500002142)。"""
+    eng = _eng({
+        "cable": [], "ptech": [], "site": [], "infrastructure": [],
+        "boite": [
+            {"code": "B1", "type": "FDT", "capacite": 72},
+            {"code": "B2", "type": "16口", "capacite": 16},
+        ],
+    })
+    result = build_bom(eng)
+    codes = [it["物料编码"] for it in result["bom_items"]]
+    assert "500002054" in codes
+    assert "500002142" in codes
+
+
+def test_bom_params_source_marked():
+    """所有 BOM 行数据来源标注行业标准惯例设定（D01~D07 已定稿）。"""
+    eng = _eng({"cable": [], "boite": [], "ptech": [], "site": [], "infrastructure": []})
+    result = build_bom(eng)
+    assert result["success"] is True
+    assert result["summary"]["confirm_count"] >= 0
+    for it in result["bom_items"]:
+        assert ("依据" in it["数据来源"] or "待官方确认" in it["数据来源"])
+
+
+def test_pole_79m_maps_to_7m_pole_not_9m():
+    """电杆高度 7.9m 不得因子串 "9" 误判为 9m 杆。"""
+    eng = _eng({"cable": [], "boite": [], "site": [], "infrastructure": [],
+                "ptech": [{"code": "P1", "type": "7m 4英寸", "hauteur_appui": 7.9}]})
+    result = build_bom(eng)
+    codes = [it["物料编码"] for it in result["bom_items"]]
+    assert "500002480" in codes      # 7m 4英寸
+    assert "500002337" not in codes  # 不得误判 9m
+
+
+def test_pole_unknown_height_marked_unlisted():
+    """官方库外杆型（12m）不得静默按 7m 出料，应输出未收录行。"""
+    eng = _eng({"cable": [], "boite": [], "site": [], "infrastructure": [],
+                "ptech": [{"code": "P2", "type": "12m", "hauteur_appui": 12}]})
+    result = build_bom(eng)
+    unlisted = [it for it in result["bom_items"] if it["物料编码"] == "未收录"]
+    assert any("12" in it["计算依据"] for it in unlisted)
+
+
+def test_global_items_have_explicit_process_mapping():
+    """项目管理/仓储/勘察/竣工图 4 个全局项的工序与使用位置不得为待确认。"""
+    eng = _eng({"cable": [], "boite": [], "ptech": [], "site": [], "infrastructure": []})
+    result = build_bom(eng)
+    for code in ("500001887", "500001853", "500001519", "500002108"):
+        item = next(it for it in result["bom_items"] if it["物料编码"] == code)
+        assert item["对应工序"] != "待确认", code
+        assert item["使用位置"] != "待确认", code
+
+
+
+
+def test_pole_type_without_height_nonstandard_marked_unlisted():
+    """无高度字段但类型声明 12m 的电杆不得静默按 7m 出料。"""
+    eng = _eng({"cable": [], "boite": [], "site": [], "infrastructure": [],
+                "ptech": [{"code": "P3", "type": "12m"}]})
+    result = build_bom(eng)
+    unlisted = [it for it in result["bom_items"] if it["物料编码"] == "未收录"]
+    assert any("12" in it["计算依据"] for it in unlisted)
+
+
+def test_cable_bend_growth_uses_business_params():
+    """弯曲增长率必须读取 business_params（duct=7‰ 时比 10‰ 少 0.3KM/100KM）。"""
+    eng = _eng({"cable": [{"code": "C1", "longueur": 100.0, "capacite": 24,
+                             "origine": "A", "extremite": "B"}],
+                "boite": [], "ptech": [], "site": [], "infrastructure": []})
+    p10 = load_business_params()
+    p10["reserve_lengths"]["bend_growth_permille"]["duct"] = 10
+    p7 = load_business_params()
+    p7["reserve_lengths"]["bend_growth_permille"]["duct"] = 7
+    r10 = next(it for it in build_bom(eng, params=p10)["bom_items"] if it["物料编码"] == "500002050")
+    r7 = next(it for it in build_bom(eng, params=p7)["bom_items"] if it["物料编码"] == "500002050")
+    assert r7["预留数量"] == pytest.approx(r10["预留数量"] - 0.3, abs=1e-6)
+
+
+def test_fiber_assignments_generation():
+    """已用芯数>0 的光缆生成预置占用（tube/fiber/core 与纤芯工具一致）。"""
+    ctx = _FakeCtx({
+        "CABLE": [
+            _FakeFeat({"CODE": "C1", "ORIGINE": "A", "EXTREMITE": "B",
+                       "NB_FIBRE_U": 6, "CAPACITE": 24, "MODULO": 6}),
+            _FakeFeat({"CODE": "C2", "ORIGINE": "A", "EXTREMITE": "B",
+                       "NB_FIBRE_U": 0, "CAPACITE": 24, "MODULO": 6}),
+            _FakeFeat({"CODE": "C3"}),  # 无已用芯数 → 跳过
+        ],
+    })
+    fa = build_fiber_assignments(ctx)
+    assert len(fa) == 1
+    assert fa[0]["cable_code"] == "C1"
+    assert len(fa[0]["assigned"]) == 6
+    # 6 芯：cores_per_tube=4 → tube1=1~4, tube2=5~6
+    assert fa[0]["assigned"][0] == {"tube": 1, "fiber": 1, "core": 1}
+    assert fa[0]["assigned"][3] == {"tube": 1, "fiber": 1, "core": 4}
+    assert fa[0]["assigned"][4] == {"tube": 2, "fiber": 1, "core": 1}
+
+
+def test_official_decisions_recorded():
+    """2026-08-22 官方口径答复：D01~D07 全部落定；D04=reuse/承载力归设计院/只减新购不删工序；D06=计划工期暂不管。"""
+    from design_parser.business_params import load_business_params
+
+    params = load_business_params()
+    meta = params.get("_meta", {})
+    assert meta.get("official_pending") == []
+    decisions = meta.get("official_decisions", {})
+    assert "D04" in decisions and "reuse" in decisions["D04"]
+    assert "D06" in decisions and "计划工期" in decisions["D06"]
+
+
+def test_fiber_assignments_no_layer():
+    """无 CABLE 图层 → 空列表。"""
+    ctx = _FakeCtx({"BOITE": []})
+    assert build_fiber_assignments(ctx) == []
+
+
+def test_bom_nonstandard_box_type_unlisted_row():
+    """非标箱体类型（评测 TC-11）→ 输出未收录行待人工确认，不静默按 16口光箱计数。"""
+    eng = _eng({
+        "cable": [], "ptech": [], "site": [], "infrastructure": [],
+        "boite": [
+            {"code": "PBO-01", "type": "HUAWEI-UNKNOWN-9999-X", "capacite": 12},
+            {"code": "PBO-02", "type": "PBO", "capacite": 12},
+        ],
+    })
+    result = build_bom(eng)
+    unknown = [it for it in result["bom_items"] if it["物料编码"] == "未收录"]
+    assert len(unknown) == 1
+    assert unknown[0]["置信状态"] == "待人工确认"
+    assert "HUAWEI-UNKNOWN-9999-X" in unknown[0]["计算方式"]
+    box16 = next(it for it in result["bom_items"] if it["物料编码"] == "500002142")
+    assert box16["设计数量"] == 1  # 只有标准 PBO 计入 16口光箱
+
+
+def test_bom_cable_reuse_deduction_all_reused():
+    """全部光缆 STATUT=REUSE（评测 TC-12）→ 新购为 0，已知利旧自动匹配并注明冲减。"""
+    eng = _eng({
+        "cable": [
+            {"code": "CABLE-01", "longueur": 14.14, "statut": "REUSE", "capacite": 12},
+            {"code": "CABLE-02", "longueur": 14.14, "statut": "REUSE", "capacite": 12},
+        ],
+        "boite": [], "ptech": [], "site": [], "infrastructure": [],
+    })
+    result = build_bom(eng)
+    cable = next(it for it in result["bom_items"] if it["物料编码"] == "500002050")
+    steel = next(it for it in result["bom_items"] if it["物料编码"] == "200001033")
+    assert cable["设计数量"] == 0
+    assert cable["置信状态"] == "自动匹配"
+    assert "利旧冲减2条光缆（28.28KM）" in cable["计算方式"]
+    assert steel["设计数量"] == 0
+    assert steel["置信状态"] == "自动匹配"
+
+
+def test_bom_cable_reuse_deduction_partial():
+    """部分光缆利旧 → 新购只按非利旧光缆长度计算。"""
+    eng = _eng({
+        "cable": [
+            {"code": "CABLE-01", "longueur": 14.14, "statut": "REUSE", "capacite": 12},
+            {"code": "CABLE-02", "longueur": 5.0, "statut": "DEPLOYE", "capacite": 12},
+        ],
+        "boite": [], "ptech": [], "site": [], "infrastructure": [],
+    })
+    result = build_bom(eng)
+    cable = next(it for it in result["bom_items"] if it["物料编码"] == "500002050")
+    assert cable["设计数量"] == pytest.approx(5.0)
+    assert "利旧冲减1条光缆（14.14KM）" in cable["计算方式"]
+    assert cable["置信状态"] == "自动匹配"
+
+
+def test_bom_reuse_three_states_cable():
+    """TEST-02：YES 冲减 / NO 不冲减 / UNKNOWN 不冲减但进人工确认。"""
+    eng = _eng({
+        "cable": [
+            {"code": "C-YES", "longueur": 1.0, "statut": "REUSE", "capacite": 12},
+            {"code": "C-NO", "longueur": 1.0, "reuse": "no", "capacite": 12},
+            {"code": "C-UNK", "longueur": 1.0, "reuse": "UNKNOWN", "capacite": 12},
+        ],
+        "boite": [], "ptech": [], "site": [], "infrastructure": [],
+    })
+    result = build_bom(eng)
+    cable = next(it for it in result["bom_items"] if it["物料编码"] == "500002050")
+    steel = next(it for it in result["bom_items"] if it["物料编码"] == "200001033")
+    # YES 不进入新购，NO/UNKNOWN 进入新购 → 设计长度 2.0KM（不擅自少采购）
+    assert cable["设计数量"] == pytest.approx(2.0)
+    assert cable["置信状态"] == "待人工确认"
+    assert "利旧冲减1条光缆（1.00KM）" in cable["计算方式"]
+    assert "1条光缆利旧状态未知（UNKNOWN）" in cable["计算方式"]
+    assert steel["设计数量"] == pytest.approx(2000.0)
+    assert steel["置信状态"] == "待人工确认"
+    # 施工义务保留由下游施工引擎基于 engineering_data 生成，BOM 不删对象；
+    # 此处 source_object_ids 必须保留三条光缆对象
+    assert {"cable:C-YES", "cable:C-NO", "cable:C-UNK"} <= set(cable["source_object_ids"])
+
+
+def test_bom_pole_reuse_unknown_keeps_purchase_and_confirms():
+    """TEST-02：UNKNOWN 电杆不得擅自减少新购，且必须进入人工确认。"""
+    eng = _eng({
+        "cable": [], "boite": [],
+        "ptech": [
+            {"code": "P-UNK", "type": "7m 4英寸", "hauteur_appui": 7, "reuse": "UNKNOWN"},
+            {"code": "P-NO", "type": "7m 4英寸", "hauteur_appui": 7, "reuse": "no"},
+        ],
+        "site": [], "infrastructure": [],
+    })
+    result = build_bom(eng)
+    pole = next(it for it in result["bom_items"] if it["物料编码"] == "500002480")
+    assert pole["设计数量"] == 2  # UNKNOWN 不冲减
+    assert pole["置信状态"] == "待人工确认"
+    assert "利旧状态未知（UNKNOWN）" in pole["计算方式"]
+    assert "利旧冲减" not in pole["计算方式"]
+    assert {"ptech:P-UNK", "ptech:P-NO"} <= set(pole["source_object_ids"])
+
+
+def test_bom_pole_reuse_no_keeps_purchase_without_confirm():
+    """TEST-02：明确 NO 的新购电杆不冲减、也不产生利旧确认。"""
+    eng = _eng({
+        "cable": [], "boite": [],
+        "ptech": [
+            {"code": "P-NO", "type": "7m 4英寸", "hauteur_appui": 7, "reuse": "no"},
+        ],
+        "site": [], "infrastructure": [],
+    })
+    result = build_bom(eng)
+    pole = next(it for it in result["bom_items"] if it["物料编码"] == "500002480")
+    assert pole["设计数量"] == 1
+    assert pole["置信状态"] == "自动匹配"
+    assert "利旧" not in pole["计算方式"]
+
+
+def test_bom_items_canonical_keys_and_object_ids():
+    """CON-03/CON-04 后端侧：BOM 行必须带 quantity/unit/material_code/source_object_ids 规范键，且与中文字段一致。"""
+    eng = _eng({
+        "cable": [], "ptech": [], "site": [], "infrastructure": [],
+        "boite": [
+            {"code": "B1", "type": "16口", "capacite": 16, "id": "boite:B1"},
+            {"code": "B2", "type": "FDT", "capacite": 72, "id": "boite:B2"},
+        ],
+    })
+    result = build_bom(eng)
+    assert result["bom_items"]
+    for it in result["bom_items"]:
+        assert it["quantity"] == it["最终数量"]
+        assert it["unit"] == it["单位"]
+        assert it["material_code"] == it["物料编码"]
+        assert isinstance(it["source_object_ids"], list)
+    box16 = next(it for it in result["bom_items"] if it["物料编码"] == "500002142")
+    fdt = next(it for it in result["bom_items"] if it["物料编码"] == "500002054")
+    assert box16["source_object_ids"] == ["boite:B1"]
+    assert fdt["source_object_ids"] == ["boite:B2"]
+    fixed = next(it for it in result["bom_items"] if it["物料编码"] == "500001887")
+    assert fixed["source_object_ids"] == []

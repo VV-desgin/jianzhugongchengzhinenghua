@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# 测试缓存/过程文件
+.pytest_cache/
+测试记录/
+# 回归夹具的备份副本（仅本地回滚用）
+tests/data/regression/*_bak*.xlsx
+
+# 日志（含请求对账数据）
+api.log
+*.log
+
+# 工程记录/记忆文档（仅存本地，不上传）
+DEVELOPMENT_MEMORY.md
+
+# 部署/构建产物
+wheels/
+dist/
+build/
+*.egg-info/
+
+# 计划执行台账（本地 scratch，git 历史与记忆文档为准）
+.superpowers/
+
+# 本地保留、不入库（竞赛数据/真实样例/内部文档/含人名表格）
+tests/data/场勘设计图.zip
+场勘设计图_返回样例.json
+API_SAMPLES.md
+docs/官方固定数据/
+docs/superpowers/
+docs/02_抽查明细.json
+docs/02_智能审查抽查结果.md
+
+# docs/ 只保留 6 份正式交付物；其余本地材料一律不入库
+/docs/*
+!/docs/00_作品系统说明.md
+!/docs/01_官方规则后端实现覆盖矩阵.md
+!/docs/03_engineering_data字段说明.md
+!/docs/04_FastAPI接口说明.md
+!/docs/05_GIS规则测试记录.md
+!/docs/06_已知限制清单.md
