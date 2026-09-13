@@ -17,5 +17,5 @@ def test_snapshot_matches_loader():
     snap = json.loads(snap_path.read_text(encoding="utf-8"))
     live = load_business_params()
     assert snap["_meta"]["official_decisions"] == live["_meta"]["official_decisions"]
-    for key in ("loss_rates", "reserve_lengths", "packaging", "fiber_policy"):
+    for key in ("loss_rates", "reserve_lengths", "packaging", "fiber_policy", "length_units"):
         assert snap[key] == live[key]

@@ -28,9 +28,9 @@ def _eng(objects):
 
 
 def test_bom_cable_formula():
-    """光缆 5.253KM 按 2KM/盘向上取整 → 3盘6KM（损耗/预留/取整链路）。"""
+    """光缆输入 5253m 换算为 5.253KM，按 2KM/盘向上取整 → 6KM。"""
     eng = _eng({
-        "cable": [{"code": "C1", "longueur": 5.253, "capacite": 24, "modulo": 6,
+        "cable": [{"code": "C1", "longueur": 5253.0, "capacite": 24, "modulo": 6,
                    "origine": "A", "extremite": "B", "nb_fibre_util": 6}],
         "boite": [], "ptech": [], "site": [], "infrastructure": [],
     })
@@ -39,6 +39,39 @@ def test_bom_cable_formula():
     assert cable["设计数量"] == pytest.approx(5.253)
     assert cable["损耗数量"] == pytest.approx(5.253 * 0.05)
     assert cable["最终数量"] == 6.0  # ceil(5.565/2)=3 盘 → 6KM
+
+
+def test_bom_cable_length_unit_can_be_km():
+    """参数显式声明光缆长度为 KM 时，不得再次除以 1000。"""
+    params = load_business_params()
+    params["length_units"]["cable_longueur"] = "km"
+    eng = _eng({
+        "cable": [{"code": "C1", "longueur": 5.253, "capacite": 24,
+                   "origine": "A", "extremite": "B"}],
+        "boite": [], "ptech": [], "site": [], "infrastructure": [],
+    })
+    cable = next(
+        it for it in build_bom(eng, params=params)["bom_items"]
+        if it["物料编码"] == "500002050"
+    )
+    assert cable["设计数量"] == pytest.approx(5.253)
+
+
+def test_bom_negative_cable_length_does_not_enter_bom_quantity():
+    """负长度属于非法工程量：净量不得为负，必须转人工确认。"""
+    eng = _eng({
+        "cable": [{"code": "C-BAD", "longueur": -35860.0, "capacite": 24,
+                   "origine": "A", "extremite": "B"}],
+        "boite": [], "ptech": [], "site": [], "infrastructure": [],
+    })
+    cable = next(
+        it for it in build_bom(eng)["bom_items"]
+        if it["物料编码"] == "500002050"
+    )
+    assert cable["设计数量"] == 0
+    assert cable["最终数量"] == 0
+    assert cable["置信状态"] == "待人工确认"
+    assert "零值/缺失" in cable["计算方式"]
 
 
 def test_bom_pole_reuse_deduction():
@@ -125,7 +158,7 @@ def test_pole_type_without_height_nonstandard_marked_unlisted():
 
 def test_cable_bend_growth_uses_business_params():
     """弯曲增长率必须读取 business_params（duct=7‰ 时比 10‰ 少 0.3KM/100KM）。"""
-    eng = _eng({"cable": [{"code": "C1", "longueur": 100.0, "capacite": 24,
+    eng = _eng({"cable": [{"code": "C1", "longueur": 100000.0, "capacite": 24,
                              "origine": "A", "extremite": "B"}],
                 "boite": [], "ptech": [], "site": [], "infrastructure": []})
     p10 = load_business_params()
@@ -198,8 +231,8 @@ def test_bom_cable_reuse_deduction_all_reused():
     """全部光缆 STATUT=REUSE（评测 TC-12）→ 新购为 0，已知利旧自动匹配并注明冲减。"""
     eng = _eng({
         "cable": [
-            {"code": "CABLE-01", "longueur": 14.14, "statut": "REUSE", "capacite": 12},
-            {"code": "CABLE-02", "longueur": 14.14, "statut": "REUSE", "capacite": 12},
+            {"code": "CABLE-01", "longueur": 14140.0, "statut": "REUSE", "capacite": 12},
+            {"code": "CABLE-02", "longueur": 14140.0, "statut": "REUSE", "capacite": 12},
         ],
         "boite": [], "ptech": [], "site": [], "infrastructure": [],
     })
@@ -217,8 +250,8 @@ def test_bom_cable_reuse_deduction_partial():
     """部分光缆利旧 → 新购只按非利旧光缆长度计算。"""
     eng = _eng({
         "cable": [
-            {"code": "CABLE-01", "longueur": 14.14, "statut": "REUSE", "capacite": 12},
-            {"code": "CABLE-02", "longueur": 5.0, "statut": "DEPLOYE", "capacite": 12},
+            {"code": "CABLE-01", "longueur": 14140.0, "statut": "REUSE", "capacite": 12},
+            {"code": "CABLE-02", "longueur": 5000.0, "statut": "DEPLOYE", "capacite": 12},
         ],
         "boite": [], "ptech": [], "site": [], "infrastructure": [],
     })
@@ -233,9 +266,9 @@ def test_bom_reuse_three_states_cable():
     """TEST-02：YES 冲减 / NO 不冲减 / UNKNOWN 不冲减但进人工确认。"""
     eng = _eng({
         "cable": [
-            {"code": "C-YES", "longueur": 1.0, "statut": "REUSE", "capacite": 12},
-            {"code": "C-NO", "longueur": 1.0, "reuse": "no", "capacite": 12},
-            {"code": "C-UNK", "longueur": 1.0, "reuse": "UNKNOWN", "capacite": 12},
+            {"code": "C-YES", "longueur": 1000.0, "statut": "REUSE", "capacite": 12},
+            {"code": "C-NO", "longueur": 1000.0, "reuse": "no", "capacite": 12},
+            {"code": "C-UNK", "longueur": 1000.0, "reuse": "UNKNOWN", "capacite": 12},
         ],
         "boite": [], "ptech": [], "site": [], "infrastructure": [],
     })

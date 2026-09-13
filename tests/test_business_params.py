@@ -6,6 +6,7 @@ def test_load_returns_expected_keys():
     p = load_business_params()
     assert "loss_rates" in p and "reserve_lengths" in p and "packaging" in p
     assert "reuse" in p and "fiber_policy" in p and "instruction_levels" in p
+    assert p["length_units"]["cable_longueur"] == "m"
 
 
 def test_defaults_when_file_missing(tmp_path):

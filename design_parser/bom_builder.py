@@ -116,6 +116,16 @@ def _num(v, default=0.0) -> float:
         return default
 
 
+def _cable_length_km(cable: dict, params: dict) -> float:
+    """将 cable.longueur 按配置单位归一为 KM；官方输入口径默认为米。"""
+    value = _num(cable.get("longueur"))
+    unit = str(
+        params.get("length_units", {}).get("cable_longueur", "m")
+    ).strip().lower()
+    km = value / 1000.0 if unit in {"m", "meter", "meters", "米"} else value
+    return max(0.0, km)
+
+
 def _obj_field(obj: dict, *names) -> str:
     for n in names:
         v = obj.get(n)
@@ -281,16 +291,16 @@ def build_bom(engineering_data: dict, params: dict = None) -> dict:
     add(MAT_SURVEY, 1.0, {}, "项目整体", "每项目1次")
     add(MAT_ASBUILT, 1.0, {}, "项目整体", "每项目1次")
 
-    # 光缆：净量=新购缆 longueur 之和（KM）；利旧光缆不计入新购
+    # 光缆：longueur 按 length_units 归一为 KM；利旧光缆不计入新购
     # （评测 TC-12：CABLE.STATUT=REUSE；D04：只减新购不删工序；
     #  UNKNOWN 不冲减，按新购计但进入人工确认）
     cable_states = [(_reuse_state(c, params), c) for c in cables]
     reused_cables = [c for st, c in cable_states if st == "yes"]
     unknown_reuse_cables = [c for st, c in cable_states if st == "unknown"]
     new_cables = [c for st, c in cable_states if st in ("no", "unknown")]
-    total_cable_km = sum(_num(c.get("longueur")) for c in new_cables)
-    reused_km = sum(_num(c.get("longueur")) for c in reused_cables)
-    unknown_reuse_km = sum(_num(c.get("longueur")) for c in unknown_reuse_cables)
+    total_cable_km = sum(_cable_length_km(c, params) for c in new_cables)
+    reused_km = sum(_cable_length_km(c, params) for c in reused_cables)
+    unknown_reuse_km = sum(_cable_length_km(c, params) for c in unknown_reuse_cables)
     n_splice = sum(1 for c in cables if _obj_field(c, "extremite", "EXTREMITE"))
     zero_len = [c for c in cables if _num(c.get("longueur")) <= 0]  # 长度零值/缺失（2026-08-23，评测 TC-14）
     cable_confirm = (
@@ -310,8 +320,18 @@ def build_bom(engineering_data: dict, params: dict = None) -> dict:
         )
     if total_cable_km > 0 or zero_len or reused_cables or unknown_reuse_cables:
         # 弯曲增长读 business_params.reserve_lengths.bend_growth_permille（默认 duct 10‰，2026-08-30 改配置驱动）
-        counts = {"splice": n_splice, "pole": len(ptechs), "endpoint": len(boites) + 1,
-                  "bend_permille": params.get("reserve_lengths", {}).get("bend_growth_permille", {}).get("duct", 10)}
+        counts = (
+            {}
+            if zero_len and total_cable_km <= 0
+            else {
+                "splice": n_splice,
+                "pole": len(ptechs),
+                "endpoint": len(boites) + 1,
+                "bend_permille": params.get("reserve_lengths", {})
+                .get("bend_growth_permille", {})
+                .get("duct", 10),
+            }
+        )
         add(MAT_CABLE, total_cable_km, counts, f"{len(cables)}条光缆", cable_note, confirm=cable_confirm,
             ids=_source_ids(cables, "cable"))
     if total_cable_km > 0 or zero_len or reused_cables or unknown_reuse_cables:
